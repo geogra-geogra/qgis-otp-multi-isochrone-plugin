@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string>到達圏作成ツール</string>
   </property>
-  <widget class="QTextEdit" name="description">
+  <widget class="QTextBrowser" name="description">
    <property name="geometry">
     <rect>
      <x>340</x>
@@ -65,7 +65,7 @@ p, li { white-space: pre-wrap; }
       <height>739</height>
      </rect>
     </property>
-    <widget class="QWidget" name="">
+    <widget class="QWidget" name="layoutWidget">
      <property name="geometry">
       <rect>
        <x>10</x>
@@ -195,7 +195,7 @@ p, li { white-space: pre-wrap; }
       <attribute name="title">
        <string>単一時間解析</string>
       </attribute>
-      <widget class="QWidget" name="">
+      <widget class="QWidget" name="layoutWidget">
        <property name="geometry">
         <rect>
          <x>10</x>
@@ -302,7 +302,7 @@ p, li { white-space: pre-wrap; }
       <attribute name="title">
        <string>複数時間解析</string>
       </attribute>
-      <widget class="QWidget" name="">
+      <widget class="QWidget" name="layoutWidget">
        <property name="geometry">
         <rect>
          <x>10</x>
@@ -503,7 +503,7 @@ p, li { white-space: pre-wrap; }
     </widget>
    </widget>
   </widget>
-  <widget class="QWidget" name="">
+  <widget class="QWidget" name="layoutWidget">
    <property name="geometry">
     <rect>
      <x>17</x>
@@ -516,7 +516,7 @@ p, li { white-space: pre-wrap; }
     <item row="0" column="0">
      <widget class="QProgressBar" name="progressBar">
       <property name="value">
-       <number>24</number>
+       <number>0</number>
       </property>
      </widget>
     </item>
