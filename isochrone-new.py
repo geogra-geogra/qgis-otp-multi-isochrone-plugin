@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 from osgeo import gdal, osr
-from PyQt5.QtCore import QDateTime, QEventLoop, Qt, QTime, QUrl
+from PyQt5.QtCore import QEventLoop, Qt, QTime, QUrl
 from PyQt5.QtGui import QColor
 from PyQt5.QtNetwork import QNetworkReply, QNetworkRequest
 from PyQt5.QtWidgets import QDialog, QMessageBox
@@ -58,10 +58,9 @@ class Isochrone(QDialog):
         self.pointTool = PointTool(self.canvas)
         self.pointTool.canvasClicked.connect(self.update_position)
 
-        self.ui.pushButton_position.clicked.connect(self.activate_point_tool)
-        self.ui.pushButton_run.clicked.connect(self.request_isochrone)
-        self.ui.pushButton_cancel.clicked.connect(self.close)
-        self.startTime.setDateTime(QDateTime.currentDateTime())
+        self.ui.setAsStandardPosition.clicked.connect(self.activate_point_tool)
+        self.ui.buttonBox.accepted.connect(self.on_run_button_clicked)  # 実行ボタン
+        self.ui.buttonBox.rejected.connect(self.close)  # キャンセルボタン
         self.manager = QgsNetworkAccessManager.instance()
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
         self.arrive_boolean = False
@@ -75,6 +74,14 @@ class Isochrone(QDialog):
             os.path.expanduser("~"), "isochrone_settings.json"
         )
         self.load_settings()
+
+    # 実行ボタンが押されたときの処理
+    def on_run_button_clicked(self):
+        self.request_isochrone()
+
+    def close(self):
+        # キャンセルボタンが押されたときの処理
+        super().close()  # ダイアログを閉じる
 
     def activate_point_tool(self):
         # ダイアログを隠す
@@ -107,18 +114,43 @@ class Isochrone(QDialog):
             f"cutoffSec={sec}" for sec in range(0, max_seconds + 1, interval_seconds)
         )
 
-    def request_isochrone(self):
-        lat, lon = self.ui.standardPosition.text().split(",")
+    def send_request_and_wait(self, request, current_date_str, current_time_str):
+        reply = self.manager.get(request)
+        loop = QEventLoop()
 
-        # startTime と finishTime の取得
-        start_time = self.ui.startTime.dateTime()
-        finish_time = self.ui.finishTime.dateTime()
+        # リプライの完了時にループを終了
+        reply.finished.connect(loop.quit)
+        loop.exec_()
 
-        # finishTimeが空欄の場合
-        if not self.ui.finishTime.dateTime().isValid():
-            finish_time = start_time  # 同じ時間に設定してループを1回のみ実行
+        # エラーがない場合のみレスポンスを処理
+        if reply.error() == QNetworkReply.NoError:
+            self.handle_response(reply, current_date_str, current_time_str)
+        else:
+            QMessageBox.critical(
+                self, "Error", f"Network error occurred: {reply.errorString()}"
+            )
+            self.error_occurred = True
+        reply.deleteLater()
 
-        # 秒数を "00" にリセット
+    def get_time_range(self):
+        """
+        タブに応じた時間範囲（startTime, finishTime）を取得
+        """
+        current_tab = self.ui.tabWidget.currentWidget()  # 現在のタブを取得
+        is_tab_multi = current_tab.objectName() == "TabMulti"
+
+        if is_tab_multi:
+            # Multiタブの場合
+            start_time = self.ui.startTime.dateTime()
+            finish_time = self.ui.finishTime.dateTime()
+            time_interval_minutes = self.ui.outputTimeInterval.value()
+        else:
+            # Singleタブの場合
+            start_time = self.ui.setTimeSingle.dateTime()
+            finish_time = start_time  # SingleではstartTimeのみ利用
+            time_interval_minutes = 0  # Singleでは未使用
+
+        # 時刻を00秒にリセット
         start_time.setTime(
             QTime(start_time.time().hour(), start_time.time().minute(), 0)
         )
@@ -126,12 +158,31 @@ class Isochrone(QDialog):
             QTime(finish_time.time().hour(), finish_time.time().minute(), 0)
         )
 
-        # outputTimeInterval（QSpinBox）から間隔を分単位で取得
-        time_interval_minutes = self.ui.outputTimeInterval.value()
+        return start_time, finish_time, time_interval_minutes
 
-        cutoff_query = self.generate_cutoff_secs(
-            self.ui.maxTime.value(), self.ui.outputPolygonInterval.value()
+    def request_isochrone(self):
+        # 現在アクティブなタブを判定
+        current_tab = self.ui.tabWidget.currentWidget()  # 現在のタブを取得
+        is_tab_multi = current_tab == self.ui.tabMulti  # TabMultiかどうかを直接比較
+
+        # タブに応じた値を取得
+        max_time = (
+            self.ui.maxTimeMulti.value()
+            if is_tab_multi
+            else self.ui.maxTimeSingle.value()
         )
+        interval_minutes = (
+            self.ui.outputPolygonIntervalMulti.value()
+            if is_tab_multi
+            else self.ui.outputPolygonIntervalSingle.value()
+        )
+        start_time, finish_time, time_interval_minutes = self.get_time_range()
+
+        # 到達時間のカットオフ秒を生成
+        cutoff_query = self.generate_cutoff_secs(max_time, interval_minutes)
+
+        # 緯度経度を取得
+        lat, lon = self.ui.standardPosition.text().split(",")
 
         # デフォルトの始点と終点を設定
         lat_dep, lon_dep = ("43.0815", "141.3074")
@@ -153,13 +204,45 @@ class Isochrone(QDialog):
         if server_url.endswith("/"):
             server_url = server_url[:-1]  # 最後の「/」を取り除く
 
-        # start_timeとfinish_timeの間を指定された間隔（分）ごとに処理
-        current_time = start_time
-        self.error_occurred = False  # エラーフラグの初期化
+        # Multiの場合は複数のリクエストを送信
+        if is_tab_multi:
+            current_time = start_time
+            self.error_occurred = False  # エラーフラグの初期化
 
-        while current_time <= finish_time and not self.error_occurred:
-            current_date_str = current_time.toString("yyyy-MM-dd")
-            current_time_str = current_time.toString("HH:mm:ss")  # 秒数も含める
+            while current_time <= finish_time and not self.error_occurred:
+                current_date_str = current_time.toString("yyyy-MM-dd")
+                current_time_str = current_time.toString("HH:mm:ss")  # 秒数も含める
+
+                full_url = (
+                    f"{server_url}/otp/routers/default/isochrone"
+                    f"?fromPlace={lat_dep},{lon_dep}&toPlace={lat_ari},{lon_ari}"
+                    f"&date={current_date_str}&time={current_time_str}&mode=WALK,TRANSIT"
+                    f"&arriveBy={arrive_boolean_str}&{cutoff_query}"
+                )
+
+                request = QNetworkRequest(QUrl(full_url))
+                request.setRawHeader(b"Accept", b"application/json")
+
+                # リクエストを送信して次の時刻に進める
+                self.send_request_and_wait(request, current_date_str, current_time_str)
+
+                # エラーが発生した場合は処理を中断
+                if self.error_occurred:
+                    break
+
+                # 指定された分の間隔で current_time を進める
+                current_time = current_time.addSecs(time_interval_minutes * 60)
+
+            # 全てのリクエストが完了した後の処理
+            if not self.error_occurred:
+                self.calculate_bounding_box()  # バウンディングボックスを計算
+                self.create_statistical_rasters()  # 統計ラスタを生成
+                QMessageBox.information(self, "完了", "処理が終了しました")
+
+        # Singleの場合はリクエスト1回のみ送信
+        else:
+            current_date_str = start_time.toString("yyyy-MM-dd")
+            current_time_str = start_time.toString("HH:mm:ss")  # 秒数も含める
 
             full_url = (
                 f"{server_url}/otp/routers/default/isochrone"
@@ -171,44 +254,12 @@ class Isochrone(QDialog):
             request = QNetworkRequest(QUrl(full_url))
             request.setRawHeader(b"Accept", b"application/json")
 
-            # リクエストを送信して次の時刻に進める
+            # リクエストを送信して結果を処理
             self.send_request_and_wait(request, current_date_str, current_time_str)
 
-            # エラーが発生した場合は処理を中断
-            if self.error_occurred:
-                break
-
-            # finishTimeが空欄の場合はループを1回で終了
-            if not self.ui.finishTime.dateTime().isValid():
-                break
-
-            # 指定された分の間隔で current_time を進める
-            current_time = current_time.addSecs(time_interval_minutes * 60)
-
-        # 全てのリクエストが完了した後の処理
-        if not self.error_occurred and self.ui.finishTime.dateTime().isValid():
-            self.calculate_bounding_box()  # バウンディングボックスを計算
-            # ラスタ化が完了した後に統計ラスタを生成
-            self.create_statistical_rasters()
-            QMessageBox.information(self, "完了", "処理が終了しました")
-
-    def send_request_and_wait(self, request, current_date_str, current_time_str):
-        reply = self.manager.get(request)
-        loop = QEventLoop()
-
-        # リプライの完了時にループを終了
-        reply.finished.connect(loop.quit)
-        loop.exec_()
-
-        # エラーがない場合のみレスポンスを処理
-        if reply.error() == QNetworkReply.NoError:
-            self.handle_response(reply, current_date_str, current_time_str)
-        else:
-            QMessageBox.critical(
-                self, "Error", f"Network error occurred: {reply.errorString()}"
-            )
-            self.error_occurred = True
-        reply.deleteLater()
+            # 統計ラスタやラスタ化は行わない
+            if not self.error_occurred:
+                QMessageBox.information(self, "完了", "リクエストが完了しました")
 
     def handle_response(self, reply, current_date_str, current_time_str):
         error = reply.error()
@@ -259,12 +310,14 @@ class Isochrone(QDialog):
     def rasterize_all_geojson_files(self):
         # メッシュのGeoJSONファイルのパス
         arrive_or_departure = "arrive" if self.arrive_boolean else "departure"
-        start_time_str = self.ui.startTime.dateTime().toString("yyyyMMddHHmm")
-        finish_time_str = self.ui.finishTime.dateTime().toString("yyyyMMddHHmm")
+        start_time, finish_time, _ = self.get_time_range()  # 時間範囲を取得
+
+        time_str_start = start_time.toString("yyyyMMddHHmm")
+        time_str_finish = finish_time.toString("yyyyMMddHHmm")
 
         # ファイル名の構築
         grid_geojson_filename = (
-            f"grid_{arrive_or_departure}_{start_time_str}_{finish_time_str}.geojson"
+            f"grid_{arrive_or_departure}_{time_str_start}_{time_str_finish}.geojson"
         )
 
         # パスの結合
@@ -407,11 +460,15 @@ class Isochrone(QDialog):
         self.save_raster(diff_data, "diff")
 
     def save_raster(self, data, stat_type):
+        start_time, finish_time, _ = self.get_time_range()  # 時間範囲を取得
+
+        time_str_start = start_time.toString("yyyyMMddHHmm")
+        time_str_finish = finish_time.toString("yyyyMMddHHmm")
         # メッシュの範囲と解像度を再取得
         base_filename = (
             f"grid_{'arrive' if self.arrive_boolean else 'departure'}_"
-            f"{self.ui.startTime.dateTime().toString('yyyyMMddHHmm')}_"
-            f"{self.ui.finishTime.dateTime().toString('yyyyMMddHHmm')}.geojson"
+            f"{time_str_start}_"
+            f"{time_str_finish}.geojson"
         )
         grid_geojson_path = os.path.join(
             self.mQgsFileWidget_output.filePath(),
@@ -434,8 +491,10 @@ class Isochrone(QDialog):
         rows = int((y_max - y_min) / pixel_size)
 
         # 出力ファイル名を生成
-        time_str_start = self.ui.startTime.dateTime().toString("yyyyMMddHHmm")
-        time_str_finish = self.ui.finishTime.dateTime().toString("yyyyMMddHHmm")
+        start_time, finish_time, _ = self.get_time_range()  # 時間範囲を取得
+
+        time_str_start = start_time.toString("yyyyMMddHHmm")
+        time_str_finish = finish_time.toString("yyyyMMddHHmm")
         stat_file_path = os.path.join(
             self.mQgsFileWidget_output.filePath(),
             f"{stat_type}_{time_str_start}_{time_str_finish}.geotiff",
@@ -587,14 +646,16 @@ class Isochrone(QDialog):
         grid_geojson = {"type": "FeatureCollection", "features": grid_features}
 
         # startTime と finishTime を YYYYMMDDHHmm 形式で取得
-        start_date_str = self.ui.startTime.dateTime().toString("yyyyMMddHHmm")
-        finish_date_str = self.ui.finishTime.dateTime().toString("yyyyMMddHHmm")
+        start_time, finish_time, _ = self.get_time_range()  # 時間範囲を取得
+
+        time_str_start = start_time.toString("yyyyMMddHHmm")
+        time_str_finish = finish_time.toString("yyyyMMddHHmm")
         arrive = "arrive" if self.arrive_boolean else "departure"
 
         # ファイル名を grid{arrive}{startTime}_{finishTime}.geojson に変更
         file_path = self.mQgsFileWidget_output.filePath()
         grid_file_name = os.path.join(
-            file_path, f"grid_{arrive}_{start_date_str}_{finish_date_str}.geojson"
+            file_path, f"grid_{arrive}_{time_str_start}_{time_str_finish}.geojson"
         )
 
         # ファイルに保存
