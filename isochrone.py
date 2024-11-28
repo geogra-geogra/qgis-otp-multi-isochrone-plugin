@@ -231,8 +231,10 @@ class Isochrone(QDialog):
             current_time = current_time.addSecs(time_interval_minutes * 60)
 
         # 全てのリクエストが完了した後の処理
-        if not self.error_occurred and (
-            is_single_tab or self.ui.finishTime.dateTime().isValid()
+        if (
+            not is_single_tab
+            and self.ui.finishTime.dateTime().isValid()
+            and not self.error_occurred
         ):
             self.calculate_bounding_box()  # バウンディングボックスを計算
             # ラスタ化が完了した後に統計ラスタを生成
