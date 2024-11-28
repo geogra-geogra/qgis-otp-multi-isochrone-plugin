@@ -238,7 +238,7 @@
                  <item row="3" column="0">
                   <layout class="QGridLayout" name="gridLayout_15">
                    <item row="1" column="0">
-                    <widget class="QRadioButton" name="radioButton_3">
+                    <widget class="QRadioButton" name="makeRasterMesh">
                      <property name="enabled">
                       <bool>false</bool>
                      </property>
@@ -249,12 +249,12 @@
                       <bool>true</bool>
                      </property>
                      <attribute name="buttonGroup">
-                      <string notr="true">radio3</string>
+                      <string notr="true">makeRaster</string>
                      </attribute>
                     </widget>
                    </item>
                    <item row="4" column="0">
-                    <widget class="QRadioButton" name="radioButton_4">
+                    <widget class="QRadioButton" name="useExistingMesh">
                      <property name="enabled">
                       <bool>false</bool>
                      </property>
@@ -262,7 +262,7 @@
                       <string>既存のメッシュを使う</string>
                      </property>
                      <attribute name="buttonGroup">
-                      <string notr="true">radio3</string>
+                      <string notr="true">makeRaster</string>
                      </attribute>
                     </widget>
                    </item>
@@ -283,7 +283,7 @@
                     </widget>
                    </item>
                    <item row="5" column="0">
-                    <widget class="QgsMapLayerComboBox" name="mMapLayerComboBox_2">
+                    <widget class="QgsMapLayerComboBox" name="existingMeshLayer">
                      <property name="enabled">
                       <bool>false</bool>
                      </property>
@@ -698,7 +698,11 @@ p, li { white-space: pre-wrap; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;データは指定のメッシュ幅またはメッシュファイルを元にラスタ化され、各種統計値が算出されます&lt;/p&gt;
 &lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:18pt;&quot;&gt;サーバーURL&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;OpenTripPlannerに接続できるURLを指定してください&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;OpenTripPlannerに接続できるURLを指定してください&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:18pt;&quot;&gt;既存のメッシュ&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;国勢調査の標準地域メッシュなどを想定しています。動作については、(株)MIERUNE提供のJapanese Grid Meshプラグインで作成したメッシュで行っています。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;
+</string>
        </property>
       </widget>
      </item>
@@ -733,7 +737,7 @@ p, li { white-space: pre-wrap; }
  <connections/>
  <buttongroups>
   <buttongroup name="arriveby"/>
-  <buttongroup name="radio3"/>
+  <buttongroup name="makeRaster"/>
   <buttongroup name="radio1"/>
  </buttongroups>
 </ui>

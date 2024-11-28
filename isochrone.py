@@ -80,6 +80,12 @@ class Isochrone(QDialog):
         # TabWidgetの初期化
         self.ui.tabWidget.currentChanged.connect(self.on_tab_changed)
 
+        # meshCheckBox の状態変更時に toggle_raster_size_controls を呼び出す
+        self.ui.meshCheckBox.toggled.connect(self.toggle_raster_size_controls)
+
+        # 初期状態の設定
+        self.toggle_raster_size_controls(self.ui.meshCheckBox.isChecked())
+
         self.manager = QgsNetworkAccessManager.instance()
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
         self.arrive_boolean = False
@@ -107,6 +113,13 @@ class Isochrone(QDialog):
         self.hide()
         # ポイントツールをアクティブにする
         self.canvas.setMapTool(self.pointTool)
+
+    def toggle_raster_size_controls(self, checked):
+        self.ui.rasterSizeLabelMulti.setEnabled(checked)
+        self.ui.rasterSize.setEnabled(checked)
+        self.ui.makeRasterMesh.setEnabled(checked)
+        self.ui.useExistingMesh.setEnabled(checked)
+        self.ui.existingMeshLayer.setEnabled(checked)
 
     # ポイントがクリックされた後の処理を追加
     def update_position(self, point):
@@ -150,11 +163,15 @@ class Isochrone(QDialog):
             self.ui.tabSingle
         )
 
+        # 現在のラジオボタンの状態を取得
+        use_existing_mesh = (
+            self.ui.makeRaster.checkedButton() == self.ui.useExistingMesh
+        )
+
         if is_single_tab:
             # tabSingleモードの設定
             start_time = self.ui.setTimeSingle.dateTime()
             finish_time = start_time  # ループは1回のみ実行
-            print("Singleモードでリクエストを実行します")
         else:
             # tabMultiモードの設定
             start_time = self.ui.startTime.dateTime()
@@ -166,7 +183,6 @@ class Isochrone(QDialog):
             finish_time.setTime(
                 QTime(finish_time.time().hour(), finish_time.time().minute(), 0)
             )
-            print("Multiモードでリクエストを実行します")
 
         # リクエスト用のパラメータ設定
         time_interval_minutes = (
@@ -230,16 +246,27 @@ class Isochrone(QDialog):
             # 指定された分の間隔で current_time を進める
             current_time = current_time.addSecs(time_interval_minutes * 60)
 
-        # 全てのリクエストが完了した後の処理
-        if (
-            not is_single_tab
-            and self.ui.finishTime.dateTime().isValid()
-            and not self.error_occurred
-        ):
-            self.calculate_bounding_box()  # バウンディングボックスを計算
-            # ラスタ化が完了した後に統計ラスタを生成
-            self.create_statistical_rasters()
-            QMessageBox.information(self, "完了", "処理が終了しました")
+        # meshCheckBox がチェックされていない場合は処理終了
+        if not self.ui.meshCheckBox.isChecked():
+            QMessageBox.information(self, "完了", "GeoJSONの保存が完了しました")
+            return
+
+        # meshCheckBox がチェックされている場合の処理
+        if self.ui.makeRaster.checkedButton() == self.ui.makeRasterMesh:
+            # makeRasterMesh が選択されている場合
+            self.calculate_bounding_box()
+        elif self.ui.makeRaster.checkedButton() == self.ui.useExistingMesh:
+            # useExistingMesh が選択されている場合
+            self.use_existing_geometry_as_bounding_box()
+
+        # ラスタ化処理
+        self.rasterize_all_geojson_files()
+
+        # 統計ラスタの生成
+        self.create_statistical_rasters()
+
+        # 完了メッセージ
+        QMessageBox.information(self, "完了", "すべての処理が終了しました")
 
     def send_request_and_wait(self, request, current_date_str, current_time_str):
         reply = self.manager.get(request)
@@ -306,27 +333,24 @@ class Isochrone(QDialog):
         reply.deleteLater()
 
     def rasterize_all_geojson_files(self):
-        # メッシュのGeoJSONファイルのパス
-        arrive_or_departure = "arrive" if self.arrive_boolean else "departure"
-        start_time_str = self.ui.startTime.dateTime().toString("yyyyMMddHHmm")
-        finish_time_str = self.ui.finishTime.dateTime().toString("yyyyMMddHHmm")
+        # 使用するメッシュレイヤーを選択
+        if self.ui.makeRaster.checkedButton() == self.ui.makeRasterMesh:
+            # 作成したグリッドを使用
+            arrive_or_departure = "arrive" if self.arrive_boolean else "departure"
+            start_time_str = self.ui.startTime.dateTime().toString("yyyyMMddHHmm")
+            finish_time_str = self.ui.finishTime.dateTime().toString("yyyyMMddHHmm")
+            grid_geojson_path = os.path.join(
+                self.mQgsFileWidget_output.filePath(),
+                f"grid_{arrive_or_departure}_{start_time_str}_{finish_time_str}.geojson",
+            )
+            mesh_layer = QgsVectorLayer(grid_geojson_path, "mesh", "ogr")
+        elif self.ui.makeRaster.checkedButton() == self.ui.useExistingMesh:
+            # 既存メッシュレイヤーを使用
+            mesh_layer = self.ui.existingMeshLayer.currentLayer()
 
-        # ファイル名の構築
-        grid_geojson_filename = (
-            f"grid_{arrive_or_departure}_{start_time_str}_{finish_time_str}.geojson"
-        )
-
-        # パスの結合
-        grid_geojson_path = os.path.join(
-            self.mQgsFileWidget_output.filePath(), grid_geojson_filename
-        )
-
-        # メッシュデータをロード
-        mesh_layer = QgsVectorLayer(grid_geojson_path, "mesh", "ogr")
-
-        if not mesh_layer.isValid():
+        if not mesh_layer or not mesh_layer.isValid():
             QMessageBox.critical(
-                self, "Layer Error", "メッシュデータのロードに失敗しました"
+                self, "Layer Error", "有効なメッシュレイヤーが選択されていません。"
             )
             return
 
@@ -403,7 +427,53 @@ class Isochrone(QDialog):
             print(f"ラスタ化が完了しました: {output_raster_path}")
 
     def create_statistical_rasters(self):
-        # GeoTIFFファイルが保存されているディレクトリを取得
+        # メッシュレイヤーを取得
+        mesh_layer = (
+            QgsVectorLayer(
+                os.path.join(
+                    self.mQgsFileWidget_output.filePath(),
+                    f"grid_{'arrive' if self.arrive_boolean else 'departure'}_"
+                    f"{self.ui.startTime.dateTime().toString('yyyyMMddHHmm')}_"
+                    f"{self.ui.finishTime.dateTime().toString('yyyyMMddHHmm')}.geojson",
+                ),
+                "mesh",
+                "ogr",
+            )
+            if self.ui.makeRaster.checkedButton() == self.ui.makeRasterMesh
+            else self.ui.existingMeshLayer.currentLayer()
+        )
+
+        # メッシュレイヤーの有効性を確認
+        if not mesh_layer or not mesh_layer.isValid():
+            QMessageBox.critical(self, "Layer Error", "メッシュレイヤーが無効です。")
+            return
+
+        # メッシュレイヤーにフィーチャがあるか確認
+        mesh_features = list(mesh_layer.getFeatures())
+        if not mesh_features:
+            QMessageBox.critical(
+                self, "Layer Error", "メッシュレイヤーにフィーチャがありません。"
+            )
+            return
+
+        # 範囲と解像度を取得
+        extent = mesh_layer.extent()
+        x_min, x_max, y_min, y_max = (
+            extent.xMinimum(),
+            extent.xMaximum(),
+            extent.yMinimum(),
+            extent.yMaximum(),
+        )
+
+        # ピクセルサイズの取得（外部グリッドにも対応）
+        if self.ui.makeRaster.checkedButton() == self.ui.useExistingMesh:
+            # 外部グリッドの場合、最初のフィーチャのサイズを使用
+            pixel_size = mesh_features[0].geometry().boundingBox().width()
+        else:
+            # 自作グリッドの場合
+            pixel_size = self.ui.rasterSize.value()
+
+        # GeoTIFFファイルをリストとして取得
         base_path = self.mQgsFileWidget_output.filePath()
         geotiff_dir = os.path.join(base_path, "data_geotiff")
 
@@ -415,70 +485,46 @@ class Isochrone(QDialog):
             for f in self.geojson_files
         ]
 
-        # ラスタデータを読み込み、行列サイズの取得
-        ds = gdal.Open(geotiff_files[0])
-        band = ds.GetRasterBand(1)
-        rows, cols = band.ReadAsArray().shape
+        # ラスタデータを読み込み、統計計算
+        rows = int((y_max - y_min) / pixel_size)
+        cols = int((x_max - x_min) / pixel_size)
 
-        # 統計ラスタの初期化（全てNaN）
         min_data = np.full((rows, cols), np.nan)
         max_data = np.full((rows, cols), np.nan)
         median_data = np.full((rows, cols), np.nan)
         mean_data = np.full((rows, cols), np.nan)
 
-        # すべてのファイルのタイルを走査して、最小値、最大値、中央値、平均を計算
         for i in range(rows):
             for j in range(cols):
-                # メッシュに対して有効な（NaN以外の）値を集める
                 values = []
                 for geotiff_file in geotiff_files:
                     ds = gdal.Open(geotiff_file)
+                    if not ds:
+                        continue
                     band = ds.GetRasterBand(1)
                     value = band.ReadAsArray()[i, j]
                     if not np.isnan(value):
                         values.append(value)
-
-                if values:  # 1つ以上の有効な値があれば統計処理
+                if values:
                     values = np.array(values)
                     min_data[i, j] = np.min(values)
                     max_data[i, j] = np.max(values)
                     median_data[i, j] = np.median(values)
                     mean_data[i, j] = np.mean(values)
 
-        # 差分の計算 (最大値 - 最小値)
         diff_data = max_data - min_data
 
         # 統計結果を保存
-        self.save_raster(min_data, "min")
-        self.save_raster(max_data, "max")
-        self.save_raster(median_data, "median")
-        self.save_raster(mean_data, "mean")
-        self.save_raster(diff_data, "diff")
+        extent_values = (x_min, x_max, y_min, y_max)
+        self.save_raster(min_data, "min", extent_values, pixel_size)
+        self.save_raster(max_data, "max", extent_values, pixel_size)
+        self.save_raster(median_data, "median", extent_values, pixel_size)
+        self.save_raster(mean_data, "mean", extent_values, pixel_size)
+        self.save_raster(diff_data, "diff", extent_values, pixel_size)
 
-    def save_raster(self, data, stat_type):
-        # メッシュの範囲と解像度を再取得
-        base_filename = (
-            f"grid_{'arrive' if self.arrive_boolean else 'departure'}_"
-            f"{self.ui.startTime.dateTime().toString('yyyyMMddHHmm')}_"
-            f"{self.ui.finishTime.dateTime().toString('yyyyMMddHHmm')}.geojson"
-        )
-        grid_geojson_path = os.path.join(
-            self.mQgsFileWidget_output.filePath(),
-            base_filename,
-        )
-
-        mesh_layer = QgsVectorLayer(grid_geojson_path, "mesh", "ogr")
-
-        extent = mesh_layer.extent()
-        x_min = extent.xMinimum()
-        x_max = extent.xMaximum()
-        y_min = extent.yMinimum()
-        y_max = extent.yMaximum()
-
-        mesh_feature = next(mesh_layer.getFeatures())
-        geom = mesh_feature.geometry()
-        pixel_size = geom.boundingBox().width()
-
+    def save_raster(self, data, stat_type, extent, pixel_size):
+        # 範囲情報を展開
+        x_min, x_max, y_min, y_max = extent
         cols = int((x_max - x_min) / pixel_size)
         rows = int((y_max - y_min) / pixel_size)
 
@@ -652,6 +698,17 @@ class Isochrone(QDialog):
 
         # CRSを明示的に設定するためのフィールドを追加（GeoJSONでは対応できない場合があるため、CRS指定を別途管理）
         print(f"グリッドが作成されました。ファイルパス: {grid_file_name}")
+
+    def use_existing_geometry_as_bounding_box(self):
+        existing_layer = self.ui.existingMeshLayer.currentLayer()
+
+        if not existing_layer or not existing_layer.isValid():
+            QMessageBox.critical(
+                self,
+                "Layer Error",
+                "有効な既存のメッシュレイヤーが選択されていません。",
+            )
+            return
 
     def apply_categorized_symbology(self, vector_layer, field_name):
         # カテゴリ値と色のリストを準備
