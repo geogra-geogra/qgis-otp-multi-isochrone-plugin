@@ -163,11 +163,6 @@ class Isochrone(QDialog):
             self.ui.tabSingle
         )
 
-        # 現在のラジオボタンの状態を取得
-        use_existing_mesh = (
-            self.ui.makeRaster.checkedButton() == self.ui.useExistingMesh
-        )
-
         if is_single_tab:
             # tabSingleモードの設定
             start_time = self.ui.setTimeSingle.dateTime()
