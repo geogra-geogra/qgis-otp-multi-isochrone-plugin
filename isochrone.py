@@ -58,10 +58,28 @@ class Isochrone(QDialog):
         self.pointTool = PointTool(self.canvas)
         self.pointTool.canvasClicked.connect(self.update_position)
 
-        self.ui.pushButton_position.clicked.connect(self.activate_point_tool)
-        self.ui.pushButton_run.clicked.connect(self.request_isochrone)
-        self.ui.pushButton_cancel.clicked.connect(self.close)
-        self.startTime.setDateTime(QDateTime.currentDateTime())
+        self.ui.setAsStandardPosition.clicked.connect(self.activate_point_tool)
+        self.ui.buttonBox.accepted.connect(self.on_run_button_clicked)  # 実行ボタン
+        self.ui.buttonBox.rejected.connect(self.close)  # キャンセルボタン
+
+        # 現在の日時を取得
+        current_datetime = QDateTime.currentDateTime()
+
+        # startTime ウィジェットの修正
+        self.startTime.setDate(current_datetime.date())
+        self.startTime.setTime(current_datetime.time())
+
+        # finishTime ウィジェットの修正
+        self.finishTime.setDate(current_datetime.date())
+        self.finishTime.setTime(current_datetime.time())
+
+        # setTimeSingle ウィジェットの修正
+        self.setTimeSingle.setDate(current_datetime.date())
+        self.setTimeSingle.setTime(current_datetime.time())
+
+        # TabWidgetの初期化
+        self.ui.tabWidget.currentChanged.connect(self.on_tab_changed)
+
         self.manager = QgsNetworkAccessManager.instance()
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
         self.arrive_boolean = False
@@ -75,6 +93,14 @@ class Isochrone(QDialog):
             os.path.expanduser("~"), "isochrone_settings.json"
         )
         self.load_settings()
+
+    # 実行ボタンが押されたときの処理
+    def on_run_button_clicked(self):
+        self.request_isochrone()
+
+    def close(self):
+        # キャンセルボタンが押されたときの処理
+        super().close()  # ダイアログを閉じる
 
     def activate_point_tool(self):
         # ダイアログを隠す
@@ -107,28 +133,45 @@ class Isochrone(QDialog):
             f"cutoffSec={sec}" for sec in range(0, max_seconds + 1, interval_seconds)
         )
 
+    def on_tab_changed(self, index):
+        """タブが切り替えられた時の処理"""
+        if index == self.ui.tabWidget.indexOf(self.ui.tabSingle):
+            print("TabSingleが選択されました")
+        elif index == self.ui.tabWidget.indexOf(self.ui.tabMulti):
+            print("TabMultiが選択されました")
+
     def request_isochrone(self):
+        """Isochroneのリクエスト処理"""
         lat, lon = self.ui.standardPosition.text().split(",")
 
-        # startTime と finishTime の取得
-        start_time = self.ui.startTime.dateTime()
-        finish_time = self.ui.finishTime.dateTime()
-
-        # finishTimeが空欄の場合
-        if not self.ui.finishTime.dateTime().isValid():
-            finish_time = start_time  # 同じ時間に設定してループを1回のみ実行
-
-        # 秒数を "00" にリセット
-        start_time.setTime(
-            QTime(start_time.time().hour(), start_time.time().minute(), 0)
-        )
-        finish_time.setTime(
-            QTime(finish_time.time().hour(), finish_time.time().minute(), 0)
+        # 現在のタブを判定
+        current_tab_index = self.ui.tabWidget.currentIndex()
+        is_single_tab = current_tab_index == self.ui.tabWidget.indexOf(
+            self.ui.tabSingle
         )
 
-        # outputTimeInterval（QSpinBox）から間隔を分単位で取得
-        time_interval_minutes = self.ui.outputTimeInterval.value()
+        if is_single_tab:
+            # tabSingleモードの設定
+            start_time = self.ui.setTimeSingle.dateTime()
+            finish_time = start_time  # ループは1回のみ実行
+            print("Singleモードでリクエストを実行します")
+        else:
+            # tabMultiモードの設定
+            start_time = self.ui.startTime.dateTime()
+            finish_time = self.ui.finishTime.dateTime()
+            # 秒数を "00" にリセット
+            start_time.setTime(
+                QTime(start_time.time().hour(), start_time.time().minute(), 0)
+            )
+            finish_time.setTime(
+                QTime(finish_time.time().hour(), finish_time.time().minute(), 0)
+            )
+            print("Multiモードでリクエストを実行します")
 
+        # リクエスト用のパラメータ設定
+        time_interval_minutes = (
+            self.ui.outputTimeInterval.value() if not is_single_tab else None
+        )
         cutoff_query = self.generate_cutoff_secs(
             self.ui.maxTime.value(), self.ui.outputPolygonInterval.value()
         )
@@ -157,10 +200,12 @@ class Isochrone(QDialog):
         current_time = start_time
         self.error_occurred = False  # エラーフラグの初期化
 
+        # リクエストループ
         while current_time <= finish_time and not self.error_occurred:
             current_date_str = current_time.toString("yyyy-MM-dd")
-            current_time_str = current_time.toString("HH:mm:ss")  # 秒数も含める
+            current_time_str = current_time.toString("HH:mm:ss")  # 秒を含めた時間形式
 
+            # フルURLの生成
             full_url = (
                 f"{server_url}/otp/routers/default/isochrone"
                 f"?fromPlace={lat_dep},{lon_dep}&toPlace={lat_ari},{lon_ari}"
@@ -168,6 +213,7 @@ class Isochrone(QDialog):
                 f"&arriveBy={arrive_boolean_str}&{cutoff_query}"
             )
 
+            # リクエスト送信とレスポンス処理
             request = QNetworkRequest(QUrl(full_url))
             request.setRawHeader(b"Accept", b"application/json")
 
@@ -177,16 +223,17 @@ class Isochrone(QDialog):
             # エラーが発生した場合は処理を中断
             if self.error_occurred:
                 break
-
-            # finishTimeが空欄の場合はループを1回で終了
-            if not self.ui.finishTime.dateTime().isValid():
+            # tabSingleの場合は1回で終了
+            if is_single_tab:
                 break
 
             # 指定された分の間隔で current_time を進める
             current_time = current_time.addSecs(time_interval_minutes * 60)
 
         # 全てのリクエストが完了した後の処理
-        if not self.error_occurred and self.ui.finishTime.dateTime().isValid():
+        if not self.error_occurred and (
+            is_single_tab or self.ui.finishTime.dateTime().isValid()
+        ):
             self.calculate_bounding_box()  # バウンディングボックスを計算
             # ラスタ化が完了した後に統計ラスタを生成
             self.create_statistical_rasters()
