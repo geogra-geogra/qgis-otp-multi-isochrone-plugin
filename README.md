@@ -1,6 +1,6 @@
 # qgis-otp-isochrone-plugin
 
-QGISでOpenTripPlannerを表示するためのプラグインです。
+QGISでOpenTripPlannerで作成した到達圏(Isochrone)を表示するためのプラグインです。
 現在は日本語のみに対応しています。
 
 ## 使い方
@@ -14,6 +14,6 @@ https://pub.confit.atlas.jp/ja/event/gisa2024/presentation/E5-02
 論文等で活用される場合は、上記の発表を引用していただきますと幸いです。
 
 ## お問い合わせ
-東京都立大学 都市環境科学研究科 地理環境学域
 山本 将大
+Yamamoto Shota
 info[a]mapmap.tokyo
