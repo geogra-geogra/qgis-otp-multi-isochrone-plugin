@@ -6,24 +6,687 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>645</width>
-    <height>855</height>
+    <width>893</width>
+    <height>1112</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>到達圏作成ツール</string>
   </property>
-  <widget class="QTextBrowser" name="description">
-   <property name="geometry">
-    <rect>
-     <x>340</x>
-     <y>20</y>
-     <width>291</width>
-     <height>741</height>
-    </rect>
-   </property>
-   <property name="html">
-    <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+  <layout class="QGridLayout" name="gridLayout_20">
+   <item row="0" column="0">
+    <layout class="QGridLayout" name="gridLayout_18">
+     <property name="sizeConstraint">
+      <enum>QLayout::SetMinimumSize</enum>
+     </property>
+     <item row="1" column="0" colspan="2">
+      <layout class="QGridLayout" name="gridLayout_5">
+       <item row="0" column="0">
+        <widget class="QProgressBar" name="progressBar">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="value">
+          <number>0</number>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QDialogButtonBox" name="buttonBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="standardButtons">
+          <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item row="0" column="0">
+      <widget class="QScrollArea" name="scrollArea">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="verticalScrollBarPolicy">
+        <enum>Qt::ScrollBarAsNeeded</enum>
+       </property>
+       <property name="horizontalScrollBarPolicy">
+        <enum>Qt::ScrollBarAsNeeded</enum>
+       </property>
+       <property name="widgetResizable">
+        <bool>true</bool>
+       </property>
+       <widget class="QWidget" name="scrollAreaWidgetContents">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>524</width>
+          <height>1019</height>
+         </rect>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_23">
+         <item row="0" column="0">
+          <layout class="QGridLayout" name="widgetGrid">
+           <item row="1" column="0">
+            <spacer name="verticalSpacer_3">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeType">
+              <enum>QSizePolicy::Fixed</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>10</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="2" column="0">
+            <widget class="QTabWidget" name="tabWidget">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="currentIndex">
+              <number>0</number>
+             </property>
+             <property name="usesScrollButtons">
+              <bool>true</bool>
+             </property>
+             <widget class="QWidget" name="tabSingle">
+              <attribute name="title">
+               <string>単一時間解析</string>
+              </attribute>
+              <layout class="QGridLayout" name="gridLayout_22">
+               <item row="0" column="0">
+                <layout class="QGridLayout" name="singleTabGrid">
+                 <item row="0" column="0">
+                  <layout class="QGridLayout" name="gridLayout">
+                   <item row="0" column="0">
+                    <widget class="QLabel" name="standardTimeAreaLabelSingle">
+                     <property name="text">
+                      <string>計測時刻</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QgsDateTimeEdit" name="setTimeSingle">
+                     <property name="tabletTracking">
+                      <bool>false</bool>
+                     </property>
+                     <property name="minimumDateTime">
+                      <datetime>
+                       <hour>0</hour>
+                       <minute>0</minute>
+                       <second>0</second>
+                       <year>1970</year>
+                       <month>1</month>
+                       <day>1</day>
+                      </datetime>
+                     </property>
+                     <property name="timeSpec">
+                      <enum>Qt::LocalTime</enum>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="2" column="0">
+                  <layout class="QGridLayout" name="maxTimeArea">
+                   <item row="0" column="0">
+                    <spacer name="verticalSpacer">
+                     <property name="orientation">
+                      <enum>Qt::Vertical</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>20</width>
+                       <height>40</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+             <widget class="QWidget" name="tabMulti">　
+              <attribute name="title">
+               <string>複数時間解析</string>
+              </attribute>
+              <layout class="QVBoxLayout" name="verticalLayout">
+               <item>
+                <layout class="QGridLayout" name="multiTabGrid">
+                 <property name="sizeConstraint">
+                  <enum>QLayout::SetDefaultConstraint</enum>
+                 </property>
+                 <item row="2" column="0">
+                  <layout class="QGridLayout" name="gridLayout_12">
+                   <item row="1" column="0">
+                    <widget class="QSpinBox" name="outputTimeInterval">
+                     <property name="maximum">
+                      <number>120</number>
+                     </property>
+                     <property name="value">
+                      <number>5</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="0">
+                    <widget class="QLabel" name="outputTimeIntervalLabel">
+                     <property name="text">
+                      <string>基準時刻間での出力間隔(分)</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="0" column="0">
+                  <layout class="QGridLayout" name="standardTimeAreaMultiGrid">
+                   <item row="0" column="0">
+                    <widget class="QLabel" name="standardTimeAreaMultiLabel">
+                     <property name="text">
+                      <string>開始時刻</string>
+                     </property>
+                     <property name="textFormat">
+                      <enum>Qt::AutoText</enum>
+                     </property>
+                     <property name="textInteractionFlags">
+                      <set>Qt::LinksAccessibleByMouse</set>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QgsDateTimeEdit" name="startTime">
+                     <property name="tabletTracking">
+                      <bool>false</bool>
+                     </property>
+                     <property name="minimumDateTime">
+                      <datetime>
+                       <hour>0</hour>
+                       <minute>0</minute>
+                       <second>0</second>
+                       <year>1970</year>
+                       <month>1</month>
+                       <day>1</day>
+                      </datetime>
+                     </property>
+                     <property name="timeSpec">
+                      <enum>Qt::LocalTime</enum>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="3" column="0">
+                  <layout class="QGridLayout" name="gridLayout_15">
+                   <item row="1" column="0">
+                    <widget class="QRadioButton" name="makeRasterMesh">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string>ラスタメッシュを作成する</string>
+                     </property>
+                     <property name="checked">
+                      <bool>true</bool>
+                     </property>
+                     <attribute name="buttonGroup">
+                      <string notr="true">makeRaster</string>
+                     </attribute>
+                    </widget>
+                   </item>
+                   <item row="4" column="0">
+                    <widget class="QRadioButton" name="useExistingMesh">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string>既存のメッシュを使う</string>
+                     </property>
+                     <attribute name="buttonGroup">
+                      <string notr="true">makeRaster</string>
+                     </attribute>
+                    </widget>
+                   </item>
+                   <item row="3" column="0">
+                    <widget class="QDoubleSpinBox" name="rasterSize">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="decimals">
+                      <number>6</number>
+                     </property>
+                     <property name="maximum">
+                      <double>180.000000000000000</double>
+                     </property>
+                     <property name="value">
+                      <double>0.006000000000000</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="5" column="0">
+                    <widget class="QgsMapLayerComboBox" name="existingMeshLayer">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="0">
+                    <widget class="QLabel" name="rasterSizeLabelMulti">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string>ラスタメッシュの大きさ(EPSG:4326 WGS84)</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="6" column="0">
+                    <spacer name="verticalSpacer_2">
+                     <property name="orientation">
+                      <enum>Qt::Vertical</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>454</width>
+                       <height>13</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item row="0" column="0">
+                    <widget class="QCheckBox" name="meshCheckBox">
+                     <property name="font">
+                      <font>
+                       <pointsize>15</pointsize>
+                       <weight>75</weight>
+                       <bold>true</bold>
+                      </font>
+                     </property>
+                     <property name="text">
+                      <string>統計メッシュを作成する</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="1" column="0">
+                  <layout class="QGridLayout" name="gridLayout_11">
+                   <item row="0" column="0">
+                    <widget class="QLabel" name="finishTimeLabelMulti">
+                     <property name="text">
+                      <string>終了時刻</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QgsDateTimeEdit" name="finishTime">
+                     <property name="tabletTracking">
+                      <bool>false</bool>
+                     </property>
+                     <property name="minimumDateTime">
+                      <datetime>
+                       <hour>0</hour>
+                       <minute>0</minute>
+                       <second>0</second>
+                       <year>1970</year>
+                       <month>1</month>
+                       <day>1</day>
+                      </datetime>
+                     </property>
+                     <property name="timeSpec">
+                      <enum>Qt::LocalTime</enum>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+            </widget>
+           </item>
+           <item row="0" column="0">
+            <layout class="QGridLayout" name="basicSettingGrid">
+             <item row="2" column="0">
+              <spacer name="verticalSpacer_6">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
+               </property>
+               <property name="sizeType">
+                <enum>QSizePolicy::Fixed</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>5</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item row="8" column="0">
+              <widget class="QLabel" name="outputFileLabel">
+               <property name="font">
+                <font>
+                 <pointsize>15</pointsize>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>出力先</string>
+               </property>
+              </widget>
+             </item>
+             <item row="11" column="0">
+              <widget class="QLabel" name="label">
+               <property name="font">
+                <font>
+                 <pointsize>15</pointsize>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>到達圏の図形</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="0">
+              <widget class="QLabel" name="serverUrlLabel">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <pointsize>15</pointsize>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>サーバーURL</string>
+               </property>
+              </widget>
+             </item>
+             <item row="9" column="0">
+              <layout class="QGridLayout" name="outputGrid">
+               <item row="2" column="0">
+                <widget class="QgsFileWidget" name="mQgsFileWidget_output">
+                 <property name="storageMode">
+                  <enum>QgsFileWidget::GetDirectory</enum>
+                 </property>
+                 <property name="options">
+                  <set>QFileDialog::DontConfirmOverwrite|QFileDialog::ShowDirsOnly</set>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="14" column="0">
+              <widget class="QgsSpinBox" name="maxTime">
+               <property name="maximum">
+                <number>1080</number>
+               </property>
+               <property name="value">
+                <number>60</number>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <layout class="QGridLayout" name="settingStandardsGrid">
+               <item row="2" column="0">
+                <widget class="QRadioButton" name="button_ari">
+                 <property name="text">
+                  <string>到着時刻と到着地点を指定</string>
+                 </property>
+                 <property name="checkable">
+                  <bool>true</bool>
+                 </property>
+                 <property name="checked">
+                  <bool>false</bool>
+                 </property>
+                 <attribute name="buttonGroup">
+                  <string notr="true">arriveby</string>
+                 </attribute>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QRadioButton" name="button_dep">
+                 <property name="text">
+                  <string>出発時刻と出発地点を指定</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                 <attribute name="buttonGroup">
+                  <string notr="true">arriveby</string>
+                 </attribute>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="7" column="0">
+              <spacer name="verticalSpacer_5">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
+               </property>
+               <property name="sizeType">
+                <enum>QSizePolicy::Fixed</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>5</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item row="4" column="0">
+              <layout class="QGridLayout" name="PositionGrid">
+               <item row="2" column="0">
+                <widget class="QRadioButton" name="radioButtonSetSinglePosition">
+                 <property name="font">
+                  <font>
+                   <weight>75</weight>
+                   <bold>true</bold>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>地点を指定</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                 <attribute name="buttonGroup">
+                  <string notr="true">radio1</string>
+                 </attribute>
+                </widget>
+               </item>
+               <item row="3" column="0" colspan="2">
+                <widget class="QLineEdit" name="standardPosition">
+                 <property name="text">
+                  <string>43.064344,141.361915</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="1">
+                <widget class="QCheckBox" name="saveAsDefaultCheckBox">
+                 <property name="text">
+                  <string>この値を次回以降の既定値にする</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="0" colspan="2">
+                <widget class="QgsMapLayerComboBox" name="setMultiPointLayer">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="0" colspan="2">
+                <widget class="QRadioButton" name="radioButtonSetMultiPosition">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="font">
+                  <font>
+                   <weight>75</weight>
+                   <bold>true</bold>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>複数地点を指定</string>
+                 </property>
+                 <attribute name="buttonGroup">
+                  <string notr="true">radio1</string>
+                 </attribute>
+                </widget>
+               </item>
+               <item row="4" column="0">
+                <widget class="QPushButton" name="setAsStandardPosition">
+                 <property name="text">
+                  <string>クリックした場所の位置座標を取得する</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="12" column="0">
+              <layout class="QGridLayout" name="outputPolygonIntervalGrid">
+               <item row="2" column="0">
+                <widget class="QgsSpinBox" name="outputPolygonInterval">
+                 <property name="value">
+                  <number>5</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="outputPolygonIntervalAreaLabel">
+                 <property name="text">
+                  <string>それぞれの時刻で出力する図形の時間の間隔(分)</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="6" column="0">
+              <layout class="QGridLayout" name="serverUrlGrid">
+               <item row="1" column="0">
+                <widget class="QLineEdit" name="serverUrlAreaText">
+                 <property name="text">
+                  <string>http://localhost:8080</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="settingPositionLabel">
+               <property name="enabled">
+                <bool>true</bool>
+               </property>
+               <property name="font">
+                <font>
+                 <pointsize>15</pointsize>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>地点の設定</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QLabel" name="settingStandardsLabel">
+               <property name="font">
+                <font>
+                 <pointsize>15</pointsize>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>基準の設定</string>
+               </property>
+              </widget>
+             </item>
+             <item row="13" column="0">
+              <widget class="QLabel" name="maxTimeAreaLabel">
+               <property name="text">
+                <string>それぞれの時刻で出力する図形の最大時間(分)</string>
+               </property>
+              </widget>
+             </item>
+             <item row="10" column="0">
+              <spacer name="verticalSpacer_4">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
+               </property>
+               <property name="sizeType">
+                <enum>QSizePolicy::Fixed</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>5</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QTextBrowser" name="description">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>200</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>400</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="html">
+        <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'.AppleSystemUIFont'; font-size:13pt; font-weight:400; font-style:normal;&quot;&gt;
@@ -35,500 +698,17 @@ p, li { white-space: pre-wrap; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;データは指定のメッシュ幅またはメッシュファイルを元にラスタ化され、各種統計値が算出されます&lt;/p&gt;
 &lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:18pt;&quot;&gt;サーバーURL&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;OpenTripPlannerに接続できるURLを指定してください&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-   </property>
-  </widget>
-  <widget class="QScrollArea" name="scrollArea">
-   <property name="geometry">
-    <rect>
-     <x>12</x>
-     <y>22</y>
-     <width>321</width>
-     <height>741</height>
-    </rect>
-   </property>
-   <property name="verticalScrollBarPolicy">
-    <enum>Qt::ScrollBarAsNeeded</enum>
-   </property>
-   <property name="horizontalScrollBarPolicy">
-    <enum>Qt::ScrollBarAsNeeded</enum>
-   </property>
-   <property name="widgetResizable">
-    <bool>true</bool>
-   </property>
-   <widget class="QWidget" name="scrollAreaWidgetContents">
-    <property name="geometry">
-     <rect>
-      <x>0</x>
-      <y>0</y>
-      <width>319</width>
-      <height>739</height>
-     </rect>
-    </property>
-    <widget class="QWidget" name="layoutWidget">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>10</y>
-       <width>291</width>
-       <height>294</height>
-      </rect>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_17">
-      <item row="0" column="0">
-       <layout class="QGridLayout" name="gridLayout_6">
-        <item row="0" column="0">
-         <widget class="QLabel" name="settingStandardsLabel">
-          <property name="text">
-           <string>基準の設定</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QRadioButton" name="button_dep">
-          <property name="text">
-           <string>出発時刻と出発地点を指定</string>
-          </property>
-          <property name="checked">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="0">
-         <widget class="QRadioButton" name="button_ari">
-          <property name="text">
-           <string>到着時刻と到着地点を指定</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item row="1" column="0">
-       <layout class="QGridLayout" name="gridLayout_7">
-        <item row="0" column="0">
-         <widget class="QLabel" name="standardPositionLabel">
-          <property name="text">
-           <string>地点を指定</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLineEdit" name="standardPosition">
-          <property name="text">
-           <string>43.064344,141.361915</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="0">
-         <widget class="QPushButton" name="pushButton_position">
-          <property name="text">
-           <string>クリックした場所の位置座標を取得する</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="0">
-         <widget class="QCheckBox" name="saveAsDefaultCheckBox">
-          <property name="text">
-           <string>この値を次回以降の既定値にする</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item row="2" column="0">
-       <layout class="QGridLayout" name="gridLayout_8">
-        <item row="0" column="0">
-         <widget class="QLabel" name="outputFileLabel">
-          <property name="text">
-           <string>出力先</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QgsFileWidget" name="mQgsFileWidget_output">
-          <property name="storageMode">
-           <enum>QgsFileWidget::GetDirectory</enum>
-          </property>
-          <property name="options">
-           <set>QFileDialog::DontConfirmOverwrite|QFileDialog::ShowDirsOnly</set>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item row="3" column="0">
-       <layout class="QGridLayout" name="gridLayout_9">
-        <item row="0" column="0">
-         <widget class="QLabel" name="serverUrlLabel">
-          <property name="text">
-           <string>サーバーURL</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLineEdit" name="serverUrlAreaText">
-          <property name="text">
-           <string>http://localhost:8080</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </widget>
-    <widget class="QTabWidget" name="tabWidget">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>320</y>
-       <width>301</width>
-       <height>411</height>
-      </rect>
-     </property>
-     <property name="currentIndex">
-      <number>1</number>
-     </property>
-     <property name="usesScrollButtons">
-      <bool>true</bool>
-     </property>
-     <widget class="QWidget" name="tabSingle">
-      <attribute name="title">
-       <string>単一時間解析</string>
-      </attribute>
-      <widget class="QWidget" name="layoutWidget">
-       <property name="geometry">
-        <rect>
-         <x>10</x>
-         <y>10</y>
-         <width>280</width>
-         <height>371</height>
-        </rect>
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;OpenTripPlannerに接続できるURLを指定してください&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:18pt;&quot;&gt;既存のメッシュ&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;国勢調査の標準地域メッシュなどを想定しています。動作については、(株)MIERUNE提供のJapanese Grid Meshプラグインで作成したメッシュで行っています。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;
+</string>
        </property>
-       <layout class="QGridLayout" name="gridLayout_4">
-        <item row="0" column="0">
-         <layout class="QGridLayout" name="gridLayout">
-          <item row="1" column="0">
-           <widget class="QgsDateTimeEdit" name="startTimeSingle">
-            <property name="tabletTracking">
-             <bool>false</bool>
-            </property>
-            <property name="time">
-             <time>
-              <hour>1</hour>
-              <minute>24</minute>
-              <second>46</second>
-             </time>
-            </property>
-            <property name="minimumDateTime">
-             <datetime>
-              <hour>0</hour>
-              <minute>0</minute>
-              <second>0</second>
-              <year>1970</year>
-              <month>1</month>
-              <day>1</day>
-             </datetime>
-            </property>
-            <property name="timeSpec">
-             <enum>Qt::LocalTime</enum>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0">
-           <widget class="QLabel" name="standardTimeAreaLabelSingle">
-            <property name="text">
-             <string>時刻</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item row="1" column="0">
-         <layout class="QGridLayout" name="gridLayout_2">
-          <item row="0" column="0">
-           <widget class="QLabel" name="outputPolygonIntervalAreaLabelSingle">
-            <property name="text">
-             <string>それぞれの時刻で出力する図形の時間の間隔(分)</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QgsSpinBox" name="outputPolygonIntervalSingle">
-            <property name="value">
-             <number>5</number>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item row="2" column="0">
-         <layout class="QGridLayout" name="gridLayout_3">
-          <item row="0" column="0">
-           <widget class="QLabel" name="maxTimeAreaLabelSingle">
-            <property name="text">
-             <string>それぞれの時刻で出力する図形の最大時間(分)</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QgsSpinBox" name="maxTimeSingle">
-            <property name="maximum">
-             <number>1080</number>
-            </property>
-            <property name="value">
-             <number>60</number>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <spacer name="verticalSpacer">
-            <property name="orientation">
-             <enum>Qt::Vertical</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>20</width>
-              <height>40</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-         </layout>
-        </item>
-       </layout>
       </widget>
-     </widget>
-     <widget class="QWidget" name="tabMulti">
-      <attribute name="title">
-       <string>複数時間解析</string>
-      </attribute>
-      <widget class="QWidget" name="layoutWidget">
-       <property name="geometry">
-        <rect>
-         <x>10</x>
-         <y>10</y>
-         <width>281</width>
-         <height>371</height>
-        </rect>
-       </property>
-       <layout class="QGridLayout" name="gridLayout_16">
-        <item row="0" column="0">
-         <layout class="QGridLayout" name="gridLayout_10">
-          <item row="0" column="0">
-           <widget class="QLabel" name="standardTimeAreaLabelMulti">
-            <property name="text">
-             <string>開始時刻</string>
-            </property>
-            <property name="textFormat">
-             <enum>Qt::AutoText</enum>
-            </property>
-            <property name="textInteractionFlags">
-             <set>Qt::LinksAccessibleByMouse</set>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QgsDateTimeEdit" name="startTimeMulti">
-            <property name="tabletTracking">
-             <bool>false</bool>
-            </property>
-            <property name="dateTime">
-             <datetime>
-              <hour>1</hour>
-              <minute>24</minute>
-              <second>46</second>
-              <year>2024</year>
-              <month>11</month>
-              <day>26</day>
-             </datetime>
-            </property>
-            <property name="minimumDateTime">
-             <datetime>
-              <hour>0</hour>
-              <minute>0</minute>
-              <second>0</second>
-              <year>1970</year>
-              <month>1</month>
-              <day>1</day>
-             </datetime>
-            </property>
-            <property name="timeSpec">
-             <enum>Qt::LocalTime</enum>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item row="1" column="0">
-         <layout class="QGridLayout" name="gridLayout_11">
-          <item row="0" column="0">
-           <widget class="QLabel" name="finishTimeLabelMulti">
-            <property name="text">
-             <string>終了時刻</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QgsDateTimeEdit" name="finishTimeMulti">
-            <property name="tabletTracking">
-             <bool>false</bool>
-            </property>
-            <property name="dateTime">
-             <datetime>
-              <hour>1</hour>
-              <minute>24</minute>
-              <second>46</second>
-              <year>2024</year>
-              <month>11</month>
-              <day>26</day>
-             </datetime>
-            </property>
-            <property name="minimumDateTime">
-             <datetime>
-              <hour>0</hour>
-              <minute>0</minute>
-              <second>0</second>
-              <year>1970</year>
-              <month>1</month>
-              <day>1</day>
-             </datetime>
-            </property>
-            <property name="timeSpec">
-             <enum>Qt::LocalTime</enum>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item row="2" column="0">
-         <layout class="QGridLayout" name="gridLayout_12">
-          <item row="0" column="0">
-           <widget class="QLabel" name="outputTimeIntervalLabelMulti">
-            <property name="text">
-             <string>基準時刻間での出力間隔(分)</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QSpinBox" name="outputTimeIntervalMulti">
-            <property name="maximum">
-             <number>120</number>
-            </property>
-            <property name="value">
-             <number>5</number>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item row="3" column="0">
-         <layout class="QGridLayout" name="gridLayout_13">
-          <item row="0" column="0">
-           <widget class="QLabel" name="outputPolygonIntervalAreaLabelMulti">
-            <property name="text">
-             <string>それぞれの時刻で出力する図形の時間の間隔(分)</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QgsSpinBox" name="outputPolygonIntervalMulti">
-            <property name="value">
-             <number>5</number>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item row="4" column="0">
-         <layout class="QGridLayout" name="gridLayout_14">
-          <item row="0" column="0">
-           <widget class="QLabel" name="maxTimeAreaLabelMulti">
-            <property name="text">
-             <string>それぞれの時刻で出力する図形の最大時間(分)</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QgsSpinBox" name="maxTimeMulti">
-            <property name="maximum">
-             <number>1080</number>
-            </property>
-            <property name="value">
-             <number>60</number>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item row="5" column="0">
-         <layout class="QGridLayout" name="gridLayout_15">
-          <item row="1" column="0">
-           <widget class="QDoubleSpinBox" name="rasterSizeMulti">
-            <property name="decimals">
-             <number>6</number>
-            </property>
-            <property name="maximum">
-             <double>180.000000000000000</double>
-            </property>
-            <property name="value">
-             <double>0.006000000000000</double>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0">
-           <widget class="QLabel" name="rasterSizeLabelMulti">
-            <property name="text">
-             <string>ラスタメッシュの大きさ(EPSG:4326 WGS84)</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <spacer name="verticalSpacer_2">
-            <property name="orientation">
-             <enum>Qt::Vertical</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>20</width>
-              <height>40</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-         </layout>
-        </item>
-       </layout>
-      </widget>
-     </widget>
-    </widget>
-   </widget>
-  </widget>
-  <widget class="QWidget" name="layoutWidget">
-   <property name="geometry">
-    <rect>
-     <x>17</x>
-     <y>780</y>
-     <width>611</width>
-     <height>65</height>
-    </rect>
-   </property>
-   <layout class="QGridLayout" name="gridLayout_5">
-    <item row="0" column="0">
-     <widget class="QProgressBar" name="progressBar">
-      <property name="value">
-       <number>0</number>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="0">
-     <widget class="QDialogButtonBox" name="buttonBox">
-      <property name="standardButtons">
-       <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-      </property>
-     </widget>
-    </item>
-   </layout>
-  </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
  </widget>
  <customwidgets>
   <customwidget>
@@ -543,6 +723,11 @@ p, li { white-space: pre-wrap; }
    <container>1</container>
   </customwidget>
   <customwidget>
+   <class>QgsMapLayerComboBox</class>
+   <extends>QComboBox</extends>
+   <header>qgsmaplayercombobox.h</header>
+  </customwidget>
+  <customwidget>
    <class>QgsSpinBox</class>
    <extends>QSpinBox</extends>
    <header>qgsspinbox.h</header>
@@ -550,4 +735,9 @@ p, li { white-space: pre-wrap; }
  </customwidgets>
  <resources/>
  <connections/>
+ <buttongroups>
+  <buttongroup name="arriveby"/>
+  <buttongroup name="makeRaster"/>
+  <buttongroup name="radio1"/>
+ </buttongroups>
 </ui>
