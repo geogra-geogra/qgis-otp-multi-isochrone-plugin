@@ -160,19 +160,19 @@ class Isochrone(QDialog):
         # ポイントツールを非アクティブにする
         self.canvas.unsetMapTool(self.pointTool)
 
-    def generate_cutoff_secs(self, max_minutes, interval_minutes):
-        max_seconds = max_minutes * 60
-        interval_seconds = interval_minutes * 60
-        return "&".join(
-            f"cutoffSec={sec}" for sec in range(0, max_seconds + 1, interval_seconds)
-        )
-
     def on_tab_changed(self, index):
         """タブが切り替えられた時の処理"""
         if index == self.ui.tabWidget.indexOf(self.ui.tabSingle):
             print("TabSingleが選択されました")
         elif index == self.ui.tabWidget.indexOf(self.ui.tabMulti):
             print("TabMultiが選択されました")
+
+    def generate_cutoff_secs(self, max_minutes, interval_minutes):
+        max_seconds = max_minutes * 60
+        interval_seconds = interval_minutes * 60
+        return "&".join(
+            f"cutoffSec={sec}" for sec in range(0, max_seconds + 1, interval_seconds)
+        )
 
     def request_isochrone(self):
         """Isochroneのリクエスト処理"""
