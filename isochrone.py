@@ -57,28 +57,125 @@ class Isochrone(QDialog):
         self.ui = uic.loadUi(
             os.path.join(os.path.dirname(__file__), "isochrone.ui"), self
         )
+        self.geojson_files = []
+        self.arrive_boolean = False
+
+        # 進捗バーの初期設定
+        self.ui.progressBar.setMinimum(0)
+        self.ui.progressBar.setMaximum(100)
+        self.ui.progressBar.setValue(0)
+
+        # サブクラスのインスタンス作成
+        self.dialog_handler = IsochroneDialog(self.ui)
+        self.layer_handler = QgisLayerHandler(self.ui, self.geojson_files)
+        self.mesh_handler = MeshHandler(
+            self.ui, self.geojson_files, self.arrive_boolean, self.layer_handler
+        )
+        self.request_handler = IsochroneRequestHandler(
+            self.ui, self.geojson_files, self.layer_handler, self.mesh_handler
+        )
+        self.rasterizer = Rasterizer(
+            self.ui, self.geojson_files, self.arrive_boolean, self.layer_handler
+        )
+
         self.canvas = iface.mapCanvas() if iface else self.parent().canvas
         self.pointTool = PointTool(self.canvas)
-        self.pointTool.canvasClicked.connect(self.update_position)
 
-        self.ui.setAsStandardPosition.clicked.connect(self.activate_point_tool)
-        self.ui.buttonBox.accepted.connect(self.on_run_button_clicked)  # 実行ボタン
+        # メソッドの接続を修正
+        self.pointTool.canvasClicked.connect(self.dialog_handler.update_position)
+        self.ui.setAsStandardPosition.clicked.connect(
+            self.dialog_handler.activate_point_tool
+        )
+        self.ui.buttonBox.accepted.connect(self.on_run_button_clicked)
         self.ui.buttonBox.rejected.connect(self.close)  # キャンセルボタン
 
+    def on_run_button_clicked(self):
+        try:
+            # 進捗バーの初期化
+            self.ui.progressBar.setMinimum(0)
+            self.ui.progressBar.setMaximum(100)
+            self.ui.progressBar.setValue(0)
+
+            # Isochroneリクエストの実行
+            lat, lon = self.ui.standardPosition.text().split(",")
+            self.request_handler.request_isochrone(
+                lat, lon, progress_start=0, progress_end=30
+            )
+
+            # メッシュチェックボックスがオフの場合はGeoJSON保存のみ
+            if not self.ui.meshCheckBox.isChecked():
+                self.ui.progressBar.setValue(0)
+                QMessageBox.information(self, "完了", "GeoJSONの保存が完了しました")
+                return
+
+            # メッシュの作成または既存メッシュの使用
+            self.request_handler.handle_mesh_creation_or_selection()
+            self.ui.progressBar.setValue(50)
+
+            # GeoJSONファイルをラスタ化
+            self.rasterizer.rasterize_all_geojson_files()
+            self.ui.progressBar.setValue(60)
+
+            # 統計ラスタの生成
+            self.rasterizer.create_statistical_rasters()
+            self.ui.progressBar.setValue(100)
+
+            # 全ての処理が正常に終了した場合にメッセージを表示
+            self.ui.progressBar.setValue(0)
+            QMessageBox.information(self, "完了", "すべての処理が終了しました")
+
+        except Exception as e:
+            QMessageBox.critical(
+                self, "エラー", f"処理中にエラーが発生しました: {str(e)}"
+            )
+            self.ui.progressBar.setValue(0)  # エラー時は進捗バーをリセット
+
+    def close(self):
+        # キャンセルボタンが押されたときの処理
+        super().close()  # ダイアログを閉じる
+
+    def use_existing_geometry_as_bounding_box(self):
+        existing_layer = self.ui.existingMeshLayer.currentLayer()
+
+        if not existing_layer or not existing_layer.isValid():
+            QMessageBox.critical(
+                self,
+                "Layer Error",
+                "有効な既存のメッシュレイヤーが選択されていません。",
+            )
+            return
+
+
+class IsochroneDialog(QDialog):
+    def __init__(self, ui):
+        super().__init__()
+        self.ui = ui
+        self.settings_file = os.path.join(
+            os.path.expanduser("~"), "isochrone_settings.json"
+        )
+        self.default_settings = {}
+
+        # UI初期化
+        self._initialize_ui()
+
+        # デフォルト設定を読み込む
+        self.load_settings()
+
+    def _initialize_ui(self):
         # 現在の日時を取得
         current_datetime = QDateTime.currentDateTime()
 
         # startTime ウィジェットの修正
-        self.startTime.setDate(current_datetime.date())
-        self.startTime.setTime(current_datetime.time())
+        self.ui.startTime.setDate(current_datetime.date())
+        self.ui.startTime.setTime(current_datetime.time())
 
         # finishTime ウィジェットの修正
-        self.finishTime.setDate(current_datetime.date())
-        self.finishTime.setTime(current_datetime.time())
+        self.ui.finishTime.setDate(current_datetime.date())
+        self.ui.finishTime.setTime(current_datetime.time())
 
         # setTimeSingle ウィジェットの修正
-        self.setTimeSingle.setDate(current_datetime.date())
-        self.setTimeSingle.setTime(current_datetime.time())
+        self.ui.setTimeSingle.setDate(current_datetime.date())
+        self.ui.setTimeSingle.setTime(current_datetime.time())
 
         # TabWidgetの初期化
         self.ui.tabWidget.currentChanged.connect(self.on_tab_changed)
@@ -94,22 +191,11 @@ class Isochrone(QDialog):
         self.arrive_boolean = False
         self.geojson_files = []
         # geojsonで拡張子を自動設定
-        self.mQgsFileWidget_output.setFilter("*.geojson")
+        self.ui.mQgsFileWidget_output.setFilter("*.geojson")
 
         # デフォルト値を保存するためのチェックボックス
         self.ui.saveAsDefaultCheckBox.stateChanged.connect(self.save_default_settings)
-        self.settings_file = os.path.join(
-            os.path.expanduser("~"), "isochrone_settings.json"
-        )
         self.load_settings()
-
-    # 実行ボタンが押されたときの処理
-    def on_run_button_clicked(self):
-        self.request_isochrone()
-
-    def close(self):
-        # キャンセルボタンが押されたときの処理
-        super().close()  # ダイアログを閉じる
 
     def activate_point_tool(self):
         # ダイアログを隠す
@@ -123,6 +209,7 @@ class Isochrone(QDialog):
         self.ui.makeRasterMesh.setEnabled(checked)
         self.ui.useExistingMesh.setEnabled(checked)
         self.ui.existingMeshLayer.setEnabled(checked)
+        print(f"toggle_raster_size_controls called with checked={checked}")  # デバッグ
 
     # ポイントがクリックされた後の処理を追加
     def update_position(self, point):
@@ -142,13 +229,6 @@ class Isochrone(QDialog):
         # ポイントツールを非アクティブにする
         self.canvas.unsetMapTool(self.pointTool)
 
-    def generate_cutoff_secs(self, max_minutes, interval_minutes):
-        max_seconds = max_minutes * 60
-        interval_seconds = interval_minutes * 60
-        return "&".join(
-            f"cutoffSec={sec}" for sec in range(0, max_seconds + 1, interval_seconds)
-        )
-
     def on_tab_changed(self, index):
         """タブが切り替えられた時の処理"""
         if index == self.ui.tabWidget.indexOf(self.ui.tabSingle):
@@ -156,10 +236,41 @@ class Isochrone(QDialog):
         elif index == self.ui.tabWidget.indexOf(self.ui.tabMulti):
             print("TabMultiが選択されました")
 
-    def request_isochrone(self):
-        """Isochroneのリクエスト処理"""
-        lat, lon = self.ui.standardPosition.text().split(",")
+    def save_default_settings(self):
+        """現在の設定をデフォルトとして保存"""
+        if self.ui.saveAsDefaultCheckBox.isChecked():
+            self.default_settings["position"] = self.ui.standardPosition.text()
+            with open(self.settings_file, "w") as file:
+                json.dump(self.default_settings, file)
 
+    def load_settings(self):
+        if os.path.exists(self.settings_file):
+            with open(self.settings_file, "r") as file:
+                self.default_settings = json.load(file)
+                self.ui.standardPosition.setText(
+                    self.default_settings.get("position", "")
+                )
+        else:
+            self.default_settings = {}
+
+
+class IsochroneRequestHandler:
+    def __init__(self, ui, geojson_files, layer_handler, mesh_handler):
+        self.ui = ui
+        self.geojson_files = geojson_files
+        self.layer_handler = layer_handler
+        self.mesh_handler = mesh_handler
+        self.manager = QgsNetworkAccessManager.instance()
+
+    def generate_cutoff_secs(self, max_minutes, interval_minutes):
+        max_seconds = max_minutes * 60
+        interval_seconds = interval_minutes * 60
+        return "&".join(
+            f"cutoffSec={sec}" for sec in range(0, max_seconds + 1, interval_seconds)
+        )
+
+    def request_isochrone(self, lat, lon, progress_start, progress_end):
+        """Isochroneのリクエスト処理"""
         # 現在のタブを判定
         current_tab_index = self.ui.tabWidget.currentIndex()
         is_single_tab = current_tab_index == self.ui.tabWidget.indexOf(
@@ -184,10 +295,34 @@ class Isochrone(QDialog):
 
         # リクエスト用のパラメータ設定
         time_interval_minutes = (
-            self.ui.outputTimeInterval.value() if not is_single_tab else None
+            self.ui.outputTimeInterval.value()
+            if self.ui.tabWidget.currentIndex()
+            != self.ui.tabWidget.indexOf(self.ui.tabSingle)
+            else None
         )
+        request_count = (
+            1
+            if time_interval_minutes is None
+            else (
+                (
+                    self.ui.startTime.dateTime().secsTo(self.ui.finishTime.dateTime())
+                    // 60
+                )
+                // time_interval_minutes
+                + 1
+            )
+        )
+
+        # 進捗量を計算
+        progress_increment = (progress_end - progress_start) / request_count
+        current_progress = progress_start
+
+        current_time = self.ui.startTime.dateTime()
+        self.error_occurred = False  # エラーフラグの初期化
+
         cutoff_query = self.generate_cutoff_secs(
-            self.ui.maxTime.value(), self.ui.outputPolygonInterval.value()
+            self.ui.maxTime.value(),
+            self.ui.outputPolygonInterval.value(),
         )
 
         # デフォルトの始点と終点を設定
@@ -233,6 +368,8 @@ class Isochrone(QDialog):
 
             # リクエストを送信して次の時刻に進める
             self.send_request_and_wait(request, current_date_str, current_time_str)
+            current_progress += progress_increment
+            self.ui.progressBar.setValue(int(current_progress))
 
             # エラーが発生した場合は処理を中断
             if self.error_occurred:
@@ -243,28 +380,6 @@ class Isochrone(QDialog):
 
             # 指定された分の間隔で current_time を進める
             current_time = current_time.addSecs(time_interval_minutes * 60)
-
-        # meshCheckBox がチェックされていない場合は処理終了
-        if not self.ui.meshCheckBox.isChecked():
-            QMessageBox.information(self, "完了", "GeoJSONの保存が完了しました")
-            return
-
-        # meshCheckBox がチェックされている場合の処理
-        if self.ui.makeRaster.checkedButton() == self.ui.makeRasterMesh:
-            # makeRasterMesh が選択されている場合
-            self.calculate_bounding_box()
-        elif self.ui.makeRaster.checkedButton() == self.ui.useExistingMesh:
-            # useExistingMesh が選択されている場合
-            self.use_existing_geometry_as_bounding_box()
-
-        # ラスタ化処理
-        self.rasterize_all_geojson_files()
-
-        # 統計ラスタの生成
-        self.create_statistical_rasters()
-
-        # 完了メッセージ
-        QMessageBox.information(self, "完了", "すべての処理が終了しました")
 
     def send_request_and_wait(self, request, current_date_str, current_time_str):
         reply = self.manager.get(request)
@@ -330,239 +445,87 @@ class Isochrone(QDialog):
 
         reply.deleteLater()
 
-    def rasterize_all_geojson_files(self):
-        # 使用するメッシュレイヤーを選択
+    def handle_mesh_creation_or_selection(self):
+        """メッシュ作成または既存メッシュを選択する処理"""
         if self.ui.makeRaster.checkedButton() == self.ui.makeRasterMesh:
-            # 作成したグリッドを使用
-            arrive_or_departure = "arrive" if self.arrive_boolean else "departure"
-            start_time_str = self.ui.startTime.dateTime().toString("yyyyMMddHHmm")
-            finish_time_str = self.ui.finishTime.dateTime().toString("yyyyMMddHHmm")
-            grid_geojson_path = os.path.join(
-                self.mQgsFileWidget_output.filePath(),
-                f"grid_{arrive_or_departure}_{start_time_str}_{finish_time_str}.geojson",
-            )
-            mesh_layer = QgsVectorLayer(grid_geojson_path, "mesh", "ogr")
+            # makeRasterMesh が選択されている場合
+            self.mesh_handler.calculate_bounding_box()
         elif self.ui.makeRaster.checkedButton() == self.ui.useExistingMesh:
-            # 既存メッシュレイヤーを使用
-            mesh_layer = self.ui.existingMeshLayer.currentLayer()
+            # useExistingMesh が選択されている場合
+            self.mesh_handler.use_existing_geometry_as_bounding_box()
 
-        if not mesh_layer or not mesh_layer.isValid():
+    def setup_default_file_name(self, file_date, time_str):
+        time_str = time_str[:4]  # 秒をカット
+        arrive = "arrive" if self.arrive_boolean else "departure"
+        return f"{arrive}_{file_date}{time_str}.geojson"
+
+    def save_isochrone_to_directory(self, geojson_data, file_date, time_str):
+        file_name = self.setup_default_file_name(
+            file_date, time_str
+        )  # ファイル名に日付と時間を含める
+        base_path = self.ui.mQgsFileWidget_output.filePath()
+
+        # base_pathが空欄かどうか確認
+        if not base_path:
             QMessageBox.critical(
-                self, "Layer Error", "有効なメッシュレイヤーが選択されていません。"
+                self,
+                "Error",
+                "保存先ディレクトリが指定されていません。処理を中断します。",
             )
-            return
+            self.error_occurred = True  # エラーフラグを設定
+            return None
 
-        # メッシュの範囲と解像度を取得
-        extent = mesh_layer.extent()
-        x_min = extent.xMinimum()
-        x_max = extent.xMaximum()
-        y_min = extent.yMinimum()
-        y_max = extent.yMaximum()
-
-        # メッシュの解像度を取得
-        mesh_feature = next(mesh_layer.getFeatures())
-        geom = mesh_feature.geometry()
-        pixel_size = geom.boundingBox().width()
-
-        cols = int((x_max - x_min) / pixel_size)
-        rows = int((y_max - y_min) / pixel_size)
-
-        # CRSをEPSG:4326に固定
-        epsg4326 = osr.SpatialReference()
-        epsg4326.ImportFromEPSG(4326)
-
-        # GeoTIFF用のディレクトリを作成
-        base_path = self.mQgsFileWidget_output.filePath()
-        geotiff_dir = os.path.join(base_path, "data_geotiff")
-        os.makedirs(geotiff_dir, exist_ok=True)
-
-        # 各GeoJSONファイルのラスタ化
-        for geojson_file in self.geojson_files:
-            # 出力ファイル名を生成
-            output_raster_path = os.path.join(
-                geotiff_dir,
-                os.path.basename(geojson_file).replace(".geojson", ".geotiff"),
-            )
-            # ラスタの作成
-            driver = gdal.GetDriverByName("GTiff")
-            target_ds = driver.Create(
-                output_raster_path, cols, rows, 1, gdal.GDT_Float32
-            )
-            target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
-
-            # CRSをEPSG:4326に設定
-            target_ds.SetProjection(epsg4326.ExportToWkt())
-
-            # NoData値を設定
-            band = target_ds.GetRasterBand(1)
-            band.SetNoDataValue(np.nan)
-
-            # GeoJSONファイルを読み込み
-            shp_ds = gdal.OpenEx(geojson_file, gdal.OF_VECTOR)
-            if shp_ds is None:
-                QMessageBox.critical(
-                    self,
-                    "Error",
-                    f"GeoJSONファイルの読み込みに失敗しました: {geojson_file}",
-                )
-                continue
-
-            # ラスタ化
-            layer = shp_ds.GetLayer()
-            gdal.RasterizeLayer(
-                target_ds, [1], layer, options=["ATTRIBUTE=time", "ALL_TOUCHED=TRUE"]
-            )
-
-            # データを処理して保存
-            raster_data = band.ReadAsArray()
-            raster_data[raster_data == 0] = np.nan
-            band.WriteArray(raster_data)
-
-            # 終了処理
-            target_ds = None
-            shp_ds = None
-
-            print(f"ラスタ化が完了しました: {output_raster_path}")
-
-    def create_statistical_rasters(self):
-        # メッシュレイヤーを取得
-        mesh_layer = (
-            QgsVectorLayer(
-                os.path.join(
-                    self.mQgsFileWidget_output.filePath(),
-                    f"grid_{'arrive' if self.arrive_boolean else 'departure'}_"
-                    f"{self.ui.startTime.dateTime().toString('yyyyMMddHHmm')}_"
-                    f"{self.ui.finishTime.dateTime().toString('yyyyMMddHHmm')}.geojson",
-                ),
-                "mesh",
-                "ogr",
-            )
-            if self.ui.makeRaster.checkedButton() == self.ui.makeRasterMesh
-            else self.ui.existingMeshLayer.currentLayer()
-        )
-
-        # メッシュレイヤーの有効性を確認
-        if not mesh_layer or not mesh_layer.isValid():
-            QMessageBox.critical(self, "Layer Error", "メッシュレイヤーが無効です。")
-            return
-
-        # メッシュレイヤーにフィーチャがあるか確認
-        mesh_features = list(mesh_layer.getFeatures())
-        if not mesh_features:
+        # 書き込み可能か確認
+        if not os.access(base_path, os.W_OK):
             QMessageBox.critical(
-                self, "Layer Error", "メッシュレイヤーにフィーチャがありません。"
+                self,
+                "Error",
+                f"指定されたディレクトリに書き込むことができません: {base_path}。処理を中断します。",
             )
-            return
+            self.error_occurred = True  # エラーフラグを設定
+            return None
 
-        # 範囲と解像度を取得
-        extent = mesh_layer.extent()
-        x_min, x_max, y_min, y_max = (
-            extent.xMinimum(),
-            extent.xMaximum(),
-            extent.yMinimum(),
-            extent.yMaximum(),
-        )
-
-        # ピクセルサイズの取得（外部グリッドにも対応）
-        if self.ui.makeRaster.checkedButton() == self.ui.useExistingMesh:
-            # 外部グリッドの場合、最初のフィーチャのサイズを使用
-            pixel_size = mesh_features[0].geometry().boundingBox().width()
-        else:
-            # 自作グリッドの場合
-            pixel_size = self.ui.rasterSize.value()
-
-        # GeoTIFFファイルをリストとして取得
-        base_path = self.mQgsFileWidget_output.filePath()
-        geotiff_dir = os.path.join(base_path, "data_geotiff")
-
-        # すべてのGeoTIFFファイルをリストとして取得
-        geotiff_files = [
-            os.path.join(
-                geotiff_dir, os.path.basename(f).replace(".geojson", ".geotiff")
-            )
-            for f in self.geojson_files
-        ]
-
-        # ラスタデータを読み込み、統計計算
-        rows = int((y_max - y_min) / pixel_size)
-        cols = int((x_max - x_min) / pixel_size)
-
-        min_data = np.full((rows, cols), np.nan)
-        max_data = np.full((rows, cols), np.nan)
-        median_data = np.full((rows, cols), np.nan)
-        mean_data = np.full((rows, cols), np.nan)
-
-        for i in range(rows):
-            for j in range(cols):
-                values = []
-                for geotiff_file in geotiff_files:
-                    ds = gdal.Open(geotiff_file)
-                    if not ds:
-                        continue
-                    band = ds.GetRasterBand(1)
-                    value = band.ReadAsArray()[i, j]
-                    if not np.isnan(value):
-                        values.append(value)
-                if values:
-                    values = np.array(values)
-                    min_data[i, j] = np.min(values)
-                    max_data[i, j] = np.max(values)
-                    median_data[i, j] = np.median(values)
-                    mean_data[i, j] = np.mean(values)
-
-        diff_data = max_data - min_data
-
-        # 統計結果を保存
-        extent_values = (x_min, x_max, y_min, y_max)
-        self.save_raster(median_data, "median", extent_values, pixel_size)
-        self.save_raster(mean_data, "mean", extent_values, pixel_size)
-        self.save_raster(diff_data, "diff", extent_values, pixel_size)
-        self.save_raster(min_data, "min", extent_values, pixel_size)
-        self.save_raster(max_data, "max", extent_values, pixel_size)
-
-    def save_raster(self, data, stat_type, extent, pixel_size):
-        # 範囲情報を展開
-        x_min, x_max, y_min, y_max = extent
-        cols = int((x_max - x_min) / pixel_size)
-        rows = int((y_max - y_min) / pixel_size)
-
-        # 出力ファイル名を生成
-        time_str_start = self.ui.startTime.dateTime().toString("yyyyMMddHHmm")
-        time_str_finish = self.ui.finishTime.dateTime().toString("yyyyMMddHHmm")
-        stat_file_path = os.path.join(
-            self.mQgsFileWidget_output.filePath(),
-            f"{stat_type}_{time_str_start}_{time_str_finish}.geotiff",
-        )
-
-        # CRSをEPSG:4326に設定
-        epsg4326 = osr.SpatialReference()
-        epsg4326.ImportFromEPSG(4326)
-
-        # 新しいラスタを作成
-        driver = gdal.GetDriverByName("GTiff")
-        target_ds = driver.Create(stat_file_path, cols, rows, 1, gdal.GDT_Float32)
-        target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
-        target_ds.SetProjection(epsg4326.ExportToWkt())
-
-        # データを書き込み
-        band = target_ds.GetRasterBand(1)
-        band.SetNoDataValue(np.nan)
-        band.WriteArray(data)
-
-        # 終了処理
-        target_ds = None
-
-        print(f"{stat_type}ラスタが作成されました: {stat_file_path}")
-
-        # QGISにラスタを追加し、スタイルを適用
-        raster_layer = QgsRasterLayer(stat_file_path, f"{stat_type}_raster")
-        if raster_layer.isValid():
-            QgsProject.instance().addMapLayer(raster_layer)
-            self.apply_raster_symbology(raster_layer)  # シンボロジを適用
-        else:
+        # GeoJSON用のディレクトリを作成
+        geojson_dir = os.path.join(base_path, "data_geojson")
+        try:
+            os.makedirs(geojson_dir, exist_ok=True)
+        except OSError as e:
             QMessageBox.critical(
-                self, "Layer Error", f"Failed to load {stat_type} raster layer"
+                self,
+                "Error",
+                f"ディレクトリの作成に失敗しました: {str(e)}。処理を中断します。",
             )
+            self.error_occurred = True  # エラーフラグを設定
+            return None
+
+        file_path = os.path.join(geojson_dir, file_name)
+        with open(file_path, "w") as file:
+            file.write(json.dumps(geojson_data))
+
+        self.layer_handler.load_vector_to_qgis(file_path)
+        return file_path  # 保存されたファイルパスを返す
+
+
+class MeshHandler:
+    def __init__(self, ui, geojson_files, arrive_boolean, layer_handler):
+        self.ui = ui
+        self.geojson_files = geojson_files
+        self.arrive_boolean = arrive_boolean
+        self.layer_handler = layer_handler
+
+    def handle_mesh_creation_or_selection(self):
+        """メッシュ作成または既存メッシュ選択の処理"""
+        if not self.ui.meshCheckBox.isChecked():
+            # メッシュが必要ない場合は None を返す
+            return None
+
+        if self.ui.makeRaster.checkedButton() == self.ui.makeRasterMesh:
+            # 新規メッシュ作成
+            return self.calculate_bounding_box()
+        elif self.ui.makeRaster.checkedButton() == self.ui.useExistingMesh:
+            # 既存メッシュを使用
+            self.use_existing_geometry_as_bounding_box()
+            return None
 
     def calculate_bounding_box(self):
         # バウンディングボックスの初期化
@@ -599,9 +562,6 @@ class Isochrone(QDialog):
 
         # グリッド作成
         self.save_grid_geojson(min_lon, min_lat, max_lon, max_lat)
-
-        # すべてのGeoJSONファイルをラスタ化
-        self.rasterize_all_geojson_files()
 
     def create_bounding_box_layer(self, min_lon, min_lat, max_lon, max_lat):
         bbox_coords = [
@@ -686,7 +646,7 @@ class Isochrone(QDialog):
         arrive = "arrive" if self.arrive_boolean else "departure"
 
         # ファイル名を grid{arrive}{startTime}_{finishTime}.geojson に変更
-        file_path = self.mQgsFileWidget_output.filePath()
+        file_path = self.ui.mQgsFileWidget_output.filePath()
         grid_file_name = os.path.join(
             file_path, f"grid_{arrive}_{start_date_str}_{finish_date_str}.geojson"
         )
@@ -698,16 +658,283 @@ class Isochrone(QDialog):
         # CRSを明示的に設定するためのフィールドを追加（GeoJSONでは対応できない場合があるため、CRS指定を別途管理）
         print(f"グリッドが作成されました。ファイルパス: {grid_file_name}")
 
-    def use_existing_geometry_as_bounding_box(self):
-        existing_layer = self.ui.existingMeshLayer.currentLayer()
 
-        if not existing_layer or not existing_layer.isValid():
+class Rasterizer:
+    def __init__(self, ui, geojson_files, arrive_boolean, layer_handler):
+        self.ui = ui
+        self.geojson_files = geojson_files
+        self.arrive_boolean = arrive_boolean
+        self.layer_handler = layer_handler
+
+    def rasterize_all_geojson_files(self):
+        # 使用するメッシュレイヤーを選択
+        if self.ui.makeRaster.checkedButton() == self.ui.makeRasterMesh:
+            # 作成したグリッドを使用
+            arrive_or_departure = "arrive" if self.arrive_boolean else "departure"
+            start_time_str = self.ui.startTime.dateTime().toString("yyyyMMddHHmm")
+            finish_time_str = self.ui.finishTime.dateTime().toString("yyyyMMddHHmm")
+            grid_geojson_path = os.path.join(
+                self.ui.mQgsFileWidget_output.filePath(),
+                f"grid_{arrive_or_departure}_{start_time_str}_{finish_time_str}.geojson",
+            )
+            mesh_layer = QgsVectorLayer(grid_geojson_path, "mesh", "ogr")
+        elif self.ui.makeRaster.checkedButton() == self.ui.useExistingMesh:
+            # 既存メッシュレイヤーを使用
+            mesh_layer = self.ui.existingMeshLayer.currentLayer()
+
+        if not mesh_layer or not mesh_layer.isValid():
             QMessageBox.critical(
-                self,
-                "Layer Error",
-                "有効な既存のメッシュレイヤーが選択されていません。",
+                self, "Layer Error", "有効なメッシュレイヤーが選択されていません。"
             )
             return
+
+        # メッシュの範囲と解像度を取得
+        extent = mesh_layer.extent()
+        x_min = extent.xMinimum()
+        x_max = extent.xMaximum()
+        y_min = extent.yMinimum()
+        y_max = extent.yMaximum()
+
+        # メッシュの解像度を取得
+        mesh_feature = next(mesh_layer.getFeatures())
+        geom = mesh_feature.geometry()
+        pixel_size = geom.boundingBox().width()
+
+        cols = int((x_max - x_min) / pixel_size)
+        rows = int((y_max - y_min) / pixel_size)
+
+        # CRSをEPSG:4326に固定
+        epsg4326 = osr.SpatialReference()
+        epsg4326.ImportFromEPSG(4326)
+
+        # GeoTIFF用のディレクトリを作成
+        base_path = self.ui.mQgsFileWidget_output.filePath()
+        geotiff_dir = os.path.join(base_path, "data_geotiff")
+        os.makedirs(geotiff_dir, exist_ok=True)
+
+        # 各GeoJSONファイルのラスタ化
+        for geojson_file in self.geojson_files:
+            # 出力ファイル名を生成
+            output_raster_path = os.path.join(
+                geotiff_dir,
+                os.path.basename(geojson_file).replace(".geojson", ".geotiff"),
+            )
+            # ラスタの作成
+            driver = gdal.GetDriverByName("GTiff")
+            target_ds = driver.Create(
+                output_raster_path, cols, rows, 1, gdal.GDT_Float32
+            )
+            target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
+
+            # CRSをEPSG:4326に設定
+            target_ds.SetProjection(epsg4326.ExportToWkt())
+
+            # NoData値を設定
+            band = target_ds.GetRasterBand(1)
+            band.SetNoDataValue(np.nan)
+
+            # GeoJSONファイルを読み込み
+            shp_ds = gdal.OpenEx(geojson_file, gdal.OF_VECTOR)
+            if shp_ds is None:
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"GeoJSONファイルの読み込みに失敗しました: {geojson_file}",
+                )
+                continue
+
+            # ラスタ化
+            layer = shp_ds.GetLayer()
+            gdal.RasterizeLayer(
+                target_ds, [1], layer, options=["ATTRIBUTE=time", "ALL_TOUCHED=TRUE"]
+            )
+
+            # データを処理して保存
+            raster_data = band.ReadAsArray()
+            raster_data[raster_data == 0] = np.nan
+            band.WriteArray(raster_data)
+
+            # 終了処理
+            target_ds = None
+            shp_ds = None
+
+            print(f"ラスタ化が完了しました: {output_raster_path}")
+
+    def save_raster(self, data, stat_type, extent, pixel_size):
+        # 範囲情報を展開
+        x_min, x_max, y_min, y_max = extent
+        cols = int((x_max - x_min) / pixel_size)
+        rows = int((y_max - y_min) / pixel_size)
+
+        # 出力ファイル名を生成
+        time_str_start = self.ui.startTime.dateTime().toString("yyyyMMddHHmm")
+        time_str_finish = self.ui.finishTime.dateTime().toString("yyyyMMddHHmm")
+        stat_file_path = os.path.join(
+            self.ui.mQgsFileWidget_output.filePath(),
+            f"{stat_type}_{time_str_start}_{time_str_finish}.geotiff",
+        )
+
+        # CRSをEPSG:4326に設定
+        epsg4326 = osr.SpatialReference()
+        epsg4326.ImportFromEPSG(4326)
+
+        # 新しいラスタを作成
+        driver = gdal.GetDriverByName("GTiff")
+        target_ds = driver.Create(stat_file_path, cols, rows, 1, gdal.GDT_Float32)
+        target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
+        target_ds.SetProjection(epsg4326.ExportToWkt())
+
+        # データを書き込み
+        band = target_ds.GetRasterBand(1)
+        band.SetNoDataValue(np.nan)
+        band.WriteArray(data)
+
+        # 終了処理
+        target_ds = None
+
+        print(f"{stat_type}ラスタが作成されました: {stat_file_path}")
+
+        # QGISにラスタを追加し、スタイルを適用
+        raster_layer = QgsRasterLayer(stat_file_path, f"{stat_type}_raster")
+        if raster_layer.isValid():
+            QgsProject.instance().addMapLayer(raster_layer)
+            self.layer_handler.apply_raster_symbology(raster_layer)  # シンボロジを適用
+        else:
+            QMessageBox.critical(
+                self, "Layer Error", f"Failed to load {stat_type} raster layer"
+            )
+
+    def create_statistical_rasters(self):
+        # メッシュレイヤーを取得
+        mesh_layer = (
+            QgsVectorLayer(
+                os.path.join(
+                    self.ui.mQgsFileWidget_output.filePath(),
+                    f"grid_{'arrive' if self.arrive_boolean else 'departure'}_"
+                    f"{self.ui.startTime.dateTime().toString('yyyyMMddHHmm')}_"
+                    f"{self.ui.finishTime.dateTime().toString('yyyyMMddHHmm')}.geojson",
+                ),
+                "mesh",
+                "ogr",
+            )
+            if self.ui.makeRaster.checkedButton() == self.ui.makeRasterMesh
+            else self.ui.existingMeshLayer.currentLayer()
+        )
+
+        # メッシュレイヤーの有効性を確認
+        if not mesh_layer or not mesh_layer.isValid():
+            QMessageBox.critical(self, "Layer Error", "メッシュレイヤーが無効です。")
+            return
+
+        # メッシュレイヤーにフィーチャがあるか確認
+        mesh_features = list(mesh_layer.getFeatures())
+        if not mesh_features:
+            QMessageBox.critical(
+                self, "Layer Error", "メッシュレイヤーにフィーチャがありません。"
+            )
+            return
+
+        # 範囲と解像度を取得
+        extent = mesh_layer.extent()
+        x_min, x_max, y_min, y_max = (
+            extent.xMinimum(),
+            extent.xMaximum(),
+            extent.yMinimum(),
+            extent.yMaximum(),
+        )
+
+        # ピクセルサイズの取得（外部グリッドにも対応）
+        if self.ui.makeRaster.checkedButton() == self.ui.useExistingMesh:
+            # 外部グリッドの場合、最初のフィーチャのサイズを使用
+            pixel_size = mesh_features[0].geometry().boundingBox().width()
+        else:
+            # 自作グリッドの場合
+            pixel_size = self.ui.rasterSize.value()
+
+        # GeoTIFFファイルをリストとして取得
+        base_path = self.ui.mQgsFileWidget_output.filePath()
+        geotiff_dir = os.path.join(base_path, "data_geotiff")
+
+        # すべてのGeoTIFFファイルをリストとして取得
+        geotiff_files = [
+            os.path.join(
+                geotiff_dir, os.path.basename(f).replace(".geojson", ".geotiff")
+            )
+            for f in self.geojson_files
+        ]
+
+        # ラスタデータを読み込み、統計計算
+        rows = int((y_max - y_min) / pixel_size)
+        cols = int((x_max - x_min) / pixel_size)
+
+        min_data = np.full((rows, cols), np.nan)
+        max_data = np.full((rows, cols), np.nan)
+        median_data = np.full((rows, cols), np.nan)
+        mean_data = np.full((rows, cols), np.nan)
+
+        for i in range(rows):
+            for j in range(cols):
+                values = []
+                for geotiff_file in geotiff_files:
+                    ds = gdal.Open(geotiff_file)
+                    if not ds:
+                        continue
+                    band = ds.GetRasterBand(1)
+                    value = band.ReadAsArray()[i, j]
+                    if not np.isnan(value):
+                        values.append(value)
+                if values:
+                    values = np.array(values)
+                    min_data[i, j] = np.min(values)
+                    max_data[i, j] = np.max(values)
+                    median_data[i, j] = np.median(values)
+                    mean_data[i, j] = np.mean(values)
+
+        diff_data = max_data - min_data
+
+        # 統計結果を保存
+        extent_values = (x_min, x_max, y_min, y_max)
+        self.save_raster(median_data, "median", extent_values, pixel_size)
+        self.save_raster(mean_data, "mean", extent_values, pixel_size)
+        self.save_raster(diff_data, "diff", extent_values, pixel_size)
+        self.save_raster(min_data, "min", extent_values, pixel_size)
+        self.save_raster(max_data, "max", extent_values, pixel_size)
+
+
+class QgisLayerHandler:
+    def __init__(self, ui, geojson_files):
+        self.ui = ui
+        self.geojson_files = geojson_files
+
+    def load_vector_to_qgis(self, file_path):
+        # ファイルパスを使用してレイヤーをロードし、QGISに追加
+        vector_layer = QgsVectorLayer(file_path, os.path.basename(file_path), "ogr")
+
+        if vector_layer.isValid():
+            QgsProject.instance().addMapLayer(vector_layer)
+            self.apply_vector_symbology(vector_layer, "time")
+        else:
+            QMessageBox.critical(self, "Layer Error", "Failed to load layer")
+
+    def load_raster_to_qgis(self, file_path):
+        """GeoTIFFファイルを読み込み、QGISに追加してスタイルを適用"""
+        # ファイルパスを使用してラスタレイヤーをロード
+        raster_layer = QgsRasterLayer(file_path, os.path.basename(file_path))
+
+        if raster_layer.isValid():
+            # レイヤのデータソースを設定して範囲を更新
+            raster_layer.dataProvider().setDataSourceUri(
+                raster_layer.dataProvider().dataSourceUri()
+            )
+            raster_layer.triggerRepaint()  # 再描画で範囲を反映
+            # レイヤーをQGISプロジェクトに追加
+            QgsProject.instance().addMapLayer(raster_layer)
+
+            # ラスタにシンボロジを適用
+            self.apply_raster_symbology(raster_layer)
+        else:
+            # 無効な場合はエラーメッセージを表示
+            QMessageBox.critical(self, "Layer Error", "Failed to load raster layer")
 
     def apply_vector_symbology(self, vector_layer, field_name):
         # カテゴリ値と色のリストを準備
@@ -820,100 +1047,3 @@ class Isochrone(QDialog):
             )
 
         return colors
-
-    def setup_default_file_name(self, file_date, time_str):
-        time_str = time_str[:4]  # 秒をカット
-        arrive = "arrive" if self.arrive_boolean else "departure"
-        return f"{arrive}_{file_date}{time_str}.geojson"
-
-    def save_isochrone_to_directory(self, geojson_data, file_date, time_str):
-        file_name = self.setup_default_file_name(
-            file_date, time_str
-        )  # ファイル名に日付と時間を含める
-        base_path = self.mQgsFileWidget_output.filePath()
-
-        # base_pathが空欄かどうか確認
-        if not base_path:
-            QMessageBox.critical(
-                self,
-                "Error",
-                "保存先ディレクトリが指定されていません。処理を中断します。",
-            )
-            self.error_occurred = True  # エラーフラグを設定
-            return None
-
-        # 書き込み可能か確認
-        if not os.access(base_path, os.W_OK):
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"指定されたディレクトリに書き込むことができません: {base_path}。処理を中断します。",
-            )
-            self.error_occurred = True  # エラーフラグを設定
-            return None
-
-        # GeoJSON用のディレクトリを作成
-        geojson_dir = os.path.join(base_path, "data_geojson")
-        try:
-            os.makedirs(geojson_dir, exist_ok=True)
-        except OSError as e:
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"ディレクトリの作成に失敗しました: {str(e)}。処理を中断します。",
-            )
-            self.error_occurred = True  # エラーフラグを設定
-            return None
-
-        file_path = os.path.join(geojson_dir, file_name)
-        with open(file_path, "w") as file:
-            file.write(json.dumps(geojson_data))
-
-        self.load_vector_to_qgis(file_path)
-        return file_path  # 保存されたファイルパスを返す
-
-    def load_vector_to_qgis(self, file_path):
-        # ファイルパスを使用してレイヤーをロードし、QGISに追加
-        vector_layer = QgsVectorLayer(file_path, os.path.basename(file_path), "ogr")
-
-        if vector_layer.isValid():
-            QgsProject.instance().addMapLayer(vector_layer)
-            self.apply_vector_symbology(vector_layer, "time")
-        else:
-            QMessageBox.critical(self, "Layer Error", "Failed to load layer")
-
-    def load_raster_to_qgis(self, file_path):
-        """GeoTIFFファイルを読み込み、QGISに追加してスタイルを適用"""
-        # ファイルパスを使用してラスタレイヤーをロード
-        raster_layer = QgsRasterLayer(file_path, os.path.basename(file_path))
-
-        if raster_layer.isValid():
-            # レイヤのデータソースを設定して範囲を更新
-            raster_layer.dataProvider().setDataSourceUri(
-                raster_layer.dataProvider().dataSourceUri()
-            )
-            raster_layer.triggerRepaint()  # 再描画で範囲を反映
-            # レイヤーをQGISプロジェクトに追加
-            QgsProject.instance().addMapLayer(raster_layer)
-
-            # ラスタにシンボロジを適用
-            self.apply_raster_symbology(raster_layer)
-        else:
-            # 無効な場合はエラーメッセージを表示
-            QMessageBox.critical(self, "Layer Error", "Failed to load raster layer")
-
-    def load_settings(self):
-        if os.path.exists(self.settings_file):
-            with open(self.settings_file, "r") as file:
-                self.default_settings = json.load(file)
-                self.ui.standardPosition.setText(
-                    self.default_settings.get("position", "")
-                )
-        else:
-            self.default_settings = {}
-
-    def save_default_settings(self):
-        if self.ui.saveAsDefaultCheckBox.isChecked():
-            self.default_settings["position"] = self.ui.standardPosition.text()
-            with open(self.settings_file, "w") as file:
-                json.dump(self.default_settings, file)
