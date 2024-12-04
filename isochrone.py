@@ -60,19 +60,20 @@ class Isochrone(QDialog):
         self.geojson_files = []
         self.arrive_boolean = False
 
+        # 進捗バーの初期設定
+        self.ui.progressBar.setMinimum(0)
+        self.ui.progressBar.setMaximum(100)
+        self.ui.progressBar.setValue(0)
+
         # サブクラスのインスタンス作成
         self.dialog_handler = IsochroneDialog(self.ui)
-
-        # QgisLayerHandlerのインスタンスを先に作成
         self.layer_handler = QgisLayerHandler(self.ui, self.geojson_files)
-
         self.mesh_handler = MeshHandler(
             self.ui, self.geojson_files, self.arrive_boolean, self.layer_handler
         )
         self.request_handler = IsochroneRequestHandler(
             self.ui, self.geojson_files, self.layer_handler, self.mesh_handler
         )
-
         self.rasterizer = Rasterizer(
             self.ui, self.geojson_files, self.arrive_boolean, self.layer_handler
         )
@@ -82,41 +83,52 @@ class Isochrone(QDialog):
 
         # メソッドの接続を修正
         self.pointTool.canvasClicked.connect(self.dialog_handler.update_position)
-
         self.ui.setAsStandardPosition.clicked.connect(
             self.dialog_handler.activate_point_tool
         )
         self.ui.buttonBox.accepted.connect(self.on_run_button_clicked)
         self.ui.buttonBox.rejected.connect(self.close)  # キャンセルボタン
 
-    # 実行ボタンが押されたときの処理
     def on_run_button_clicked(self):
         try:
-            # Isochroneリクエストを実行
+            # 進捗バーの初期化
+            self.ui.progressBar.setMinimum(0)
+            self.ui.progressBar.setMaximum(100)
+            self.ui.progressBar.setValue(0)
+
+            # Isochroneリクエストの実行
             lat, lon = self.ui.standardPosition.text().split(",")
-            self.request_handler.request_isochrone(lat, lon)
+            self.request_handler.request_isochrone(
+                lat, lon, progress_start=0, progress_end=30
+            )
 
             # メッシュチェックボックスがオフの場合はGeoJSON保存のみ
             if not self.ui.meshCheckBox.isChecked():
+                self.ui.progressBar.setValue(0)
                 QMessageBox.information(self, "完了", "GeoJSONの保存が完了しました")
                 return
 
             # メッシュの作成または既存メッシュの使用
             self.request_handler.handle_mesh_creation_or_selection()
+            self.ui.progressBar.setValue(50)
 
             # GeoJSONファイルをラスタ化
             self.rasterizer.rasterize_all_geojson_files()
+            self.ui.progressBar.setValue(60)
 
             # 統計ラスタの生成
             self.rasterizer.create_statistical_rasters()
+            self.ui.progressBar.setValue(100)
 
             # 全ての処理が正常に終了した場合にメッセージを表示
+            self.ui.progressBar.setValue(0)
             QMessageBox.information(self, "完了", "すべての処理が終了しました")
 
         except Exception as e:
             QMessageBox.critical(
                 self, "エラー", f"処理中にエラーが発生しました: {str(e)}"
             )
+            self.ui.progressBar.setValue(0)  # エラー時は進捗バーをリセット
 
     def close(self):
         # キャンセルボタンが押されたときの処理
@@ -257,7 +269,7 @@ class IsochroneRequestHandler:
             f"cutoffSec={sec}" for sec in range(0, max_seconds + 1, interval_seconds)
         )
 
-    def request_isochrone(self, lat, lon):
+    def request_isochrone(self, lat, lon, progress_start, progress_end):
         """Isochroneのリクエスト処理"""
         # 現在のタブを判定
         current_tab_index = self.ui.tabWidget.currentIndex()
@@ -283,8 +295,31 @@ class IsochroneRequestHandler:
 
         # リクエスト用のパラメータ設定
         time_interval_minutes = (
-            self.ui.outputTimeInterval.value() if not is_single_tab else None
+            self.ui.outputTimeInterval.value()
+            if self.ui.tabWidget.currentIndex()
+            != self.ui.tabWidget.indexOf(self.ui.tabSingle)
+            else None
         )
+        request_count = (
+            1
+            if time_interval_minutes is None
+            else (
+                (
+                    self.ui.startTime.dateTime().secsTo(self.ui.finishTime.dateTime())
+                    // 60
+                )
+                // time_interval_minutes
+                + 1
+            )
+        )
+
+        # 進捗量を計算
+        progress_increment = (progress_end - progress_start) / request_count
+        current_progress = progress_start
+
+        current_time = self.ui.startTime.dateTime()
+        self.error_occurred = False  # エラーフラグの初期化
+
         cutoff_query = self.generate_cutoff_secs(
             self.ui.maxTime.value(),
             self.ui.outputPolygonInterval.value(),
@@ -333,6 +368,8 @@ class IsochroneRequestHandler:
 
             # リクエストを送信して次の時刻に進める
             self.send_request_and_wait(request, current_date_str, current_time_str)
+            current_progress += progress_increment
+            self.ui.progressBar.setValue(int(current_progress))
 
             # エラーが発生した場合は処理を中断
             if self.error_occurred:
