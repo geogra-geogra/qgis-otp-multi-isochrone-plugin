@@ -105,25 +105,32 @@ class Isochrone(QDialog):
 
     # 実行ボタンが押されたときの処理
     def on_run_button_clicked(self):
-        # Isochroneリクエスト
-        self.request_isochrone()
+        try:
+            # Isochroneリクエスト
+            self.request_isochrone()
 
-        # meshCheckBox がチェックされていない場合、GeoJSON保存のみで終了
-        if not self.ui.meshCheckBox.isChecked():
-            QMessageBox.information(self, "完了", "GeoJSONの保存が完了しました")
-            return
+            # meshCheckBox がチェックされていない場合、GeoJSON保存のみで終了
+            if not self.ui.meshCheckBox.isChecked():
+                QMessageBox.information(self, "完了", "GeoJSONの保存が完了しました")
+                return
 
-        # メッシュの作成または既存メッシュの使用
-        self.handle_mesh_creation_or_selection()
+            # メッシュの作成または既存メッシュの使用
+            self.handle_mesh_creation_or_selection()
 
-        # GeoJSONファイルをラスタ化
-        self.rasterize_all_geojson_files()
+            # GeoJSONファイルをラスタ化
+            self.rasterize_all_geojson_files()
 
-        # 統計ラスタの生成
-        self.create_statistical_rasters()
+            # 統計ラスタの生成
+            self.create_statistical_rasters()
 
-        # 完了メッセージ
-        QMessageBox.information(self, "完了", "すべての処理が終了しました")
+            # 全ての処理が正常に終了した場合にメッセージを表示
+            QMessageBox.information(self, "完了", "すべての処理が終了しました")
+
+        except Exception as e:
+            # エラーが発生した場合の通知
+            QMessageBox.critical(
+                self, "エラー", f"処理中にエラーが発生しました: {str(e)}"
+            )
 
     def close(self):
         # キャンセルボタンが押されたときの処理
@@ -262,9 +269,6 @@ class Isochrone(QDialog):
             # 指定された分の間隔で current_time を進める
             current_time = current_time.addSecs(time_interval_minutes * 60)
 
-        # 完了メッセージ
-        QMessageBox.information(self, "完了", "すべての処理が終了しました")
-
     def send_request_and_wait(self, request, current_date_str, current_time_str):
         reply = self.manager.get(request)
         loop = QEventLoop()
@@ -282,15 +286,6 @@ class Isochrone(QDialog):
             )
             self.error_occurred = True
         reply.deleteLater()
-
-    def handle_mesh_creation_or_selection(self):
-        """メッシュ作成または既存メッシュを選択する処理"""
-        if self.ui.makeRaster.checkedButton() == self.ui.makeRasterMesh:
-            # makeRasterMesh が選択されている場合
-            self.calculate_bounding_box()
-        elif self.ui.makeRaster.checkedButton() == self.ui.useExistingMesh:
-            # useExistingMesh が選択されている場合
-            self.use_existing_geometry_as_bounding_box()
 
     def handle_response(self, reply, current_date_str, current_time_str):
         error = reply.error()
@@ -337,6 +332,15 @@ class Isochrone(QDialog):
             self.error_occurred = True
 
         reply.deleteLater()
+
+    def handle_mesh_creation_or_selection(self):
+        """メッシュ作成または既存メッシュを選択する処理"""
+        if self.ui.makeRaster.checkedButton() == self.ui.makeRasterMesh:
+            # makeRasterMesh が選択されている場合
+            self.calculate_bounding_box()
+        elif self.ui.makeRaster.checkedButton() == self.ui.useExistingMesh:
+            # useExistingMesh が選択されている場合
+            self.use_existing_geometry_as_bounding_box()
 
     def rasterize_all_geojson_files(self):
         # 使用するメッシュレイヤーを選択
@@ -431,6 +435,89 @@ class Isochrone(QDialog):
             shp_ds = None
 
             print(f"ラスタ化が完了しました: {output_raster_path}")
+
+    def calculate_bounding_box(self):
+        # バウンディングボックスの初期化
+        min_lon, min_lat = float("inf"), float("inf")
+        max_lon, max_lat = float("-inf"), float("-inf")
+
+        # すべての保存されたGeoJSONファイルを読み込み、座標範囲を計算
+        for file_path in self.geojson_files:
+            with open(file_path, "r") as file:
+                geojson_data = json.load(file)
+
+                for feature in geojson_data["features"]:
+                    geometry = feature.get("geometry")
+
+                    # geometryとcoordinatesの存在を確認
+                    if geometry is not None and "coordinates" in geometry:
+                        coords = geometry["coordinates"]
+                        flat_coords = flatten_coordinates(
+                            coords
+                        )  # フラット化した座標を取得
+
+                        for lon, lat in flat_coords:
+                            min_lon = min(min_lon, lon)
+                            min_lat = min(min_lat, lat)
+                            max_lon = max(max_lon, lon)
+                            max_lat = max(max_lat, lat)
+
+        # バウンディングボックスが有効なら保存
+        if min_lon != float("inf") and max_lon != float("-inf"):
+            self.create_bounding_box_layer(min_lon, min_lat, max_lon, max_lat)
+
+            # バウンディングボックスをもとにグリッドを作成して保存
+            self.save_grid_geojson(min_lon, min_lat, max_lon, max_lat)
+
+        # グリッド作成
+        self.save_grid_geojson(min_lon, min_lat, max_lon, max_lat)
+
+        # すべてのGeoJSONファイルをラスタ化
+        self.rasterize_all_geojson_files()
+
+    def create_bounding_box_layer(self, min_lon, min_lat, max_lon, max_lat):
+        bbox_coords = [
+            [min_lon, max_lat],
+            [max_lon, max_lat],
+            [max_lon, min_lat],
+            [min_lon, min_lat],
+            [min_lon, max_lat],
+        ]
+
+        bbox_geojson = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Polygon", "coordinates": [bbox_coords]},
+                    "properties": {},
+                }
+            ],
+        }
+
+        # boundingbox を一時レイヤーとしてロード（ただし QGIS に追加しない）
+        self.bbox_layer = QgsVectorLayer(
+            json.dumps(bbox_geojson), "temporary_bbox", "ogr"
+        )
+
+        if not self.bbox_layer.isValid():
+            QMessageBox.critical(
+                self, "Layer Error", "Failed to create bounding box layer"
+            )
+        else:
+            # QGIS に追加しないのでメモリ内に一時的に保持
+            pass  # 保存も追加も行わない
+
+    def use_existing_geometry_as_bounding_box(self):
+        existing_layer = self.ui.existingMeshLayer.currentLayer()
+
+        if not existing_layer or not existing_layer.isValid():
+            QMessageBox.critical(
+                self,
+                "Layer Error",
+                "有効な既存のメッシュレイヤーが選択されていません。",
+            )
+            return
 
     def create_statistical_rasters(self):
         # メッシュレイヤーを取得
@@ -527,195 +614,6 @@ class Isochrone(QDialog):
         self.save_raster(diff_data, "diff", extent_values, pixel_size)
         self.save_raster(min_data, "min", extent_values, pixel_size)
         self.save_raster(max_data, "max", extent_values, pixel_size)
-
-    def save_raster(self, data, stat_type, extent, pixel_size):
-        # 範囲情報を展開
-        x_min, x_max, y_min, y_max = extent
-        cols = int((x_max - x_min) / pixel_size)
-        rows = int((y_max - y_min) / pixel_size)
-
-        # 出力ファイル名を生成
-        time_str_start = self.ui.startTime.dateTime().toString("yyyyMMddHHmm")
-        time_str_finish = self.ui.finishTime.dateTime().toString("yyyyMMddHHmm")
-        stat_file_path = os.path.join(
-            self.mQgsFileWidget_output.filePath(),
-            f"{stat_type}_{time_str_start}_{time_str_finish}.geotiff",
-        )
-
-        # CRSをEPSG:4326に設定
-        epsg4326 = osr.SpatialReference()
-        epsg4326.ImportFromEPSG(4326)
-
-        # 新しいラスタを作成
-        driver = gdal.GetDriverByName("GTiff")
-        target_ds = driver.Create(stat_file_path, cols, rows, 1, gdal.GDT_Float32)
-        target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
-        target_ds.SetProjection(epsg4326.ExportToWkt())
-
-        # データを書き込み
-        band = target_ds.GetRasterBand(1)
-        band.SetNoDataValue(np.nan)
-        band.WriteArray(data)
-
-        # 終了処理
-        target_ds = None
-
-        print(f"{stat_type}ラスタが作成されました: {stat_file_path}")
-
-        # QGISにラスタを追加し、スタイルを適用
-        raster_layer = QgsRasterLayer(stat_file_path, f"{stat_type}_raster")
-        if raster_layer.isValid():
-            QgsProject.instance().addMapLayer(raster_layer)
-            self.apply_raster_symbology(raster_layer)  # シンボロジを適用
-        else:
-            QMessageBox.critical(
-                self, "Layer Error", f"Failed to load {stat_type} raster layer"
-            )
-
-    def calculate_bounding_box(self):
-        # バウンディングボックスの初期化
-        min_lon, min_lat = float("inf"), float("inf")
-        max_lon, max_lat = float("-inf"), float("-inf")
-
-        # すべての保存されたGeoJSONファイルを読み込み、座標範囲を計算
-        for file_path in self.geojson_files:
-            with open(file_path, "r") as file:
-                geojson_data = json.load(file)
-
-                for feature in geojson_data["features"]:
-                    geometry = feature.get("geometry")
-
-                    # geometryとcoordinatesの存在を確認
-                    if geometry is not None and "coordinates" in geometry:
-                        coords = geometry["coordinates"]
-                        flat_coords = flatten_coordinates(
-                            coords
-                        )  # フラット化した座標を取得
-
-                        for lon, lat in flat_coords:
-                            min_lon = min(min_lon, lon)
-                            min_lat = min(min_lat, lat)
-                            max_lon = max(max_lon, lon)
-                            max_lat = max(max_lat, lat)
-
-        # バウンディングボックスが有効なら保存
-        if min_lon != float("inf") and max_lon != float("-inf"):
-            self.create_bounding_box_layer(min_lon, min_lat, max_lon, max_lat)
-
-            # バウンディングボックスをもとにグリッドを作成して保存
-            self.save_grid_geojson(min_lon, min_lat, max_lon, max_lat)
-
-        # グリッド作成
-        self.save_grid_geojson(min_lon, min_lat, max_lon, max_lat)
-
-        # すべてのGeoJSONファイルをラスタ化
-        self.rasterize_all_geojson_files()
-
-    def create_bounding_box_layer(self, min_lon, min_lat, max_lon, max_lat):
-        bbox_coords = [
-            [min_lon, max_lat],
-            [max_lon, max_lat],
-            [max_lon, min_lat],
-            [min_lon, min_lat],
-            [min_lon, max_lat],
-        ]
-
-        bbox_geojson = {
-            "type": "FeatureCollection",
-            "features": [
-                {
-                    "type": "Feature",
-                    "geometry": {"type": "Polygon", "coordinates": [bbox_coords]},
-                    "properties": {},
-                }
-            ],
-        }
-
-        # boundingbox を一時レイヤーとしてロード（ただし QGIS に追加しない）
-        self.bbox_layer = QgsVectorLayer(
-            json.dumps(bbox_geojson), "temporary_bbox", "ogr"
-        )
-
-        if not self.bbox_layer.isValid():
-            QMessageBox.critical(
-                self, "Layer Error", "Failed to create bounding box layer"
-            )
-        else:
-            # QGIS に追加しないのでメモリ内に一時的に保持
-            pass  # 保存も追加も行わない
-
-    def save_grid_geojson(self, min_lon, min_lat, max_lon, max_lat):
-        # rasterSizeから間隔（単位）を取得
-        grid_size = self.ui.rasterSize.value()
-
-        # min_lon, min_lat から max_lon, max_lat までの範囲でグリッドを作成
-        grid_features = []
-
-        current_lon = min_lon
-        while current_lon < max_lon:
-            current_lat = min_lat
-            while current_lat < max_lat:
-                # 各グリッドセルの座標を計算
-                top_left = [current_lon, current_lat + grid_size]
-                top_right = [current_lon + grid_size, current_lat + grid_size]
-                bottom_right = [current_lon + grid_size, current_lat]
-                bottom_left = [current_lon, current_lat]
-
-                # グリッドセルを長方形のPolygonとしてGeoJSONに追加
-                grid_features.append(
-                    {
-                        "type": "Feature",
-                        "geometry": {
-                            "type": "Polygon",
-                            "coordinates": [
-                                [
-                                    top_left,
-                                    top_right,
-                                    bottom_right,
-                                    bottom_left,
-                                    top_left,
-                                ]
-                            ],
-                        },
-                        "properties": {},
-                    }
-                )
-
-                # 次のセルに移動
-                current_lat += grid_size
-            current_lon += grid_size
-
-        # GeoJSON構造を作成
-        grid_geojson = {"type": "FeatureCollection", "features": grid_features}
-
-        # startTime と finishTime を YYYYMMDDHHmm 形式で取得
-        start_date_str = self.ui.startTime.dateTime().toString("yyyyMMddHHmm")
-        finish_date_str = self.ui.finishTime.dateTime().toString("yyyyMMddHHmm")
-        arrive = "arrive" if self.arrive_boolean else "departure"
-
-        # ファイル名を grid{arrive}{startTime}_{finishTime}.geojson に変更
-        file_path = self.mQgsFileWidget_output.filePath()
-        grid_file_name = os.path.join(
-            file_path, f"grid_{arrive}_{start_date_str}_{finish_date_str}.geojson"
-        )
-
-        # ファイルに保存
-        with open(grid_file_name, "w") as grid_file:
-            json.dump(grid_geojson, grid_file)
-
-        # CRSを明示的に設定するためのフィールドを追加（GeoJSONでは対応できない場合があるため、CRS指定を別途管理）
-        print(f"グリッドが作成されました。ファイルパス: {grid_file_name}")
-
-    def use_existing_geometry_as_bounding_box(self):
-        existing_layer = self.ui.existingMeshLayer.currentLayer()
-
-        if not existing_layer or not existing_layer.isValid():
-            QMessageBox.critical(
-                self,
-                "Layer Error",
-                "有効な既存のメッシュレイヤーが選択されていません。",
-            )
-            return
 
     def apply_vector_symbology(self, vector_layer, field_name):
         # カテゴリ値と色のリストを準備
@@ -833,6 +731,112 @@ class Isochrone(QDialog):
         time_str = time_str[:4]  # 秒をカット
         arrive = "arrive" if self.arrive_boolean else "departure"
         return f"{arrive}_{file_date}{time_str}.geojson"
+
+    def save_grid_geojson(self, min_lon, min_lat, max_lon, max_lat):
+        # rasterSizeから間隔（単位）を取得
+        grid_size = self.ui.rasterSize.value()
+
+        # min_lon, min_lat から max_lon, max_lat までの範囲でグリッドを作成
+        grid_features = []
+
+        current_lon = min_lon
+        while current_lon < max_lon:
+            current_lat = min_lat
+            while current_lat < max_lat:
+                # 各グリッドセルの座標を計算
+                top_left = [current_lon, current_lat + grid_size]
+                top_right = [current_lon + grid_size, current_lat + grid_size]
+                bottom_right = [current_lon + grid_size, current_lat]
+                bottom_left = [current_lon, current_lat]
+
+                # グリッドセルを長方形のPolygonとしてGeoJSONに追加
+                grid_features.append(
+                    {
+                        "type": "Feature",
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": [
+                                [
+                                    top_left,
+                                    top_right,
+                                    bottom_right,
+                                    bottom_left,
+                                    top_left,
+                                ]
+                            ],
+                        },
+                        "properties": {},
+                    }
+                )
+
+                # 次のセルに移動
+                current_lat += grid_size
+            current_lon += grid_size
+
+        # GeoJSON構造を作成
+        grid_geojson = {"type": "FeatureCollection", "features": grid_features}
+
+        # startTime と finishTime を YYYYMMDDHHmm 形式で取得
+        start_date_str = self.ui.startTime.dateTime().toString("yyyyMMddHHmm")
+        finish_date_str = self.ui.finishTime.dateTime().toString("yyyyMMddHHmm")
+        arrive = "arrive" if self.arrive_boolean else "departure"
+
+        # ファイル名を grid{arrive}{startTime}_{finishTime}.geojson に変更
+        file_path = self.mQgsFileWidget_output.filePath()
+        grid_file_name = os.path.join(
+            file_path, f"grid_{arrive}_{start_date_str}_{finish_date_str}.geojson"
+        )
+
+        # ファイルに保存
+        with open(grid_file_name, "w") as grid_file:
+            json.dump(grid_geojson, grid_file)
+
+        # CRSを明示的に設定するためのフィールドを追加（GeoJSONでは対応できない場合があるため、CRS指定を別途管理）
+        print(f"グリッドが作成されました。ファイルパス: {grid_file_name}")
+
+    def save_raster(self, data, stat_type, extent, pixel_size):
+        # 範囲情報を展開
+        x_min, x_max, y_min, y_max = extent
+        cols = int((x_max - x_min) / pixel_size)
+        rows = int((y_max - y_min) / pixel_size)
+
+        # 出力ファイル名を生成
+        time_str_start = self.ui.startTime.dateTime().toString("yyyyMMddHHmm")
+        time_str_finish = self.ui.finishTime.dateTime().toString("yyyyMMddHHmm")
+        stat_file_path = os.path.join(
+            self.mQgsFileWidget_output.filePath(),
+            f"{stat_type}_{time_str_start}_{time_str_finish}.geotiff",
+        )
+
+        # CRSをEPSG:4326に設定
+        epsg4326 = osr.SpatialReference()
+        epsg4326.ImportFromEPSG(4326)
+
+        # 新しいラスタを作成
+        driver = gdal.GetDriverByName("GTiff")
+        target_ds = driver.Create(stat_file_path, cols, rows, 1, gdal.GDT_Float32)
+        target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
+        target_ds.SetProjection(epsg4326.ExportToWkt())
+
+        # データを書き込み
+        band = target_ds.GetRasterBand(1)
+        band.SetNoDataValue(np.nan)
+        band.WriteArray(data)
+
+        # 終了処理
+        target_ds = None
+
+        print(f"{stat_type}ラスタが作成されました: {stat_file_path}")
+
+        # QGISにラスタを追加し、スタイルを適用
+        raster_layer = QgsRasterLayer(stat_file_path, f"{stat_type}_raster")
+        if raster_layer.isValid():
+            QgsProject.instance().addMapLayer(raster_layer)
+            self.apply_raster_symbology(raster_layer)  # シンボロジを適用
+        else:
+            QMessageBox.critical(
+                self, "Layer Error", f"Failed to load {stat_type} raster layer"
+            )
 
     def save_isochrone_to_directory(self, geojson_data, file_date, time_str):
         file_name = self.setup_default_file_name(
