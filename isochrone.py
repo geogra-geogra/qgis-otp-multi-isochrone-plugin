@@ -9,12 +9,15 @@ from PyQt5.QtNetwork import QNetworkReply, QNetworkRequest
 from PyQt5.QtWidgets import QDialog, QMessageBox
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
+    QgsColorRampShader,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
     QgsNetworkAccessManager,
     QgsProject,
     QgsRasterLayer,
+    QgsRasterShader,
     QgsRendererCategory,
+    QgsSingleBandPseudoColorRenderer,
     QgsSymbol,
     QgsVectorLayer,
 )
@@ -511,11 +514,11 @@ class Isochrone(QDialog):
 
         # 統計結果を保存
         extent_values = (x_min, x_max, y_min, y_max)
-        self.save_raster(min_data, "min", extent_values, pixel_size)
-        self.save_raster(max_data, "max", extent_values, pixel_size)
         self.save_raster(median_data, "median", extent_values, pixel_size)
         self.save_raster(mean_data, "mean", extent_values, pixel_size)
         self.save_raster(diff_data, "diff", extent_values, pixel_size)
+        self.save_raster(min_data, "min", extent_values, pixel_size)
+        self.save_raster(max_data, "max", extent_values, pixel_size)
 
     def save_raster(self, data, stat_type, extent, pixel_size):
         # 範囲情報を展開
@@ -551,10 +554,11 @@ class Isochrone(QDialog):
 
         print(f"{stat_type}ラスタが作成されました: {stat_file_path}")
 
-        # QGISにラスタを追加
+        # QGISにラスタを追加し、スタイルを適用
         raster_layer = QgsRasterLayer(stat_file_path, f"{stat_type}_raster")
         if raster_layer.isValid():
             QgsProject.instance().addMapLayer(raster_layer)
+            self.apply_raster_symbology(raster_layer)  # シンボロジを適用
         else:
             QMessageBox.critical(
                 self, "Layer Error", f"Failed to load {stat_type} raster layer"
@@ -705,7 +709,7 @@ class Isochrone(QDialog):
             )
             return
 
-    def apply_categorized_symbology(self, vector_layer, field_name):
+    def apply_vector_symbology(self, vector_layer, field_name):
         # カテゴリ値と色のリストを準備
         unique_times = sorted([f[field_name] for f in vector_layer.getFeatures()])
         unique_colors = self.generate_colors(len(unique_times))
@@ -722,6 +726,51 @@ class Isochrone(QDialog):
         renderer = QgsCategorizedSymbolRenderer(field_name, categories)
         vector_layer.setRenderer(renderer)
         vector_layer.triggerRepaint()
+
+    def apply_raster_symbology(self, raster_layer):
+        """ラスタレイヤーにカテゴリ値パレットを基にシンボロジを適用"""
+        if not raster_layer.isValid():
+            QMessageBox.critical(self, "Layer Error", "Invalid raster layer.")
+            return
+
+        # シェーダーの作成
+        raster_shader = QgsRasterShader()
+        color_ramp_shader = QgsColorRampShader()
+        color_ramp_shader.setColorRampType(
+            QgsColorRampShader.Discrete
+        )  # カテゴリ用設定
+
+        # ラスタの最小値と最大値を取得
+        stats = raster_layer.dataProvider().bandStatistics(1)
+        min_value = int(stats.minimumValue)
+        max_value = int(stats.maximumValue)
+
+        # カテゴリの範囲をインターバルごとに分割
+        step_interval = (
+            self.ui.outputPolygonInterval.value()
+        )  # UIからカテゴリ間隔を取得
+        categories = range(
+            min_value, max_value + 1, step_interval
+        )  # カテゴリの範囲を生成
+
+        # カラーマップの作成
+        color_ramp_items = []
+        colors = self.generate_colors(len(categories))  # カテゴリ数に基づいて色を生成
+        for category, color in zip(categories, colors):
+            color_ramp_items.append(
+                QgsColorRampShader.ColorRampItem(category, QColor(color), str(category))
+            )
+
+        # カテゴリ別カラーマップをシェーダーに適用
+        color_ramp_shader.setColorRampItemList(color_ramp_items)
+        raster_shader.setRasterShaderFunction(color_ramp_shader)
+
+        # レンダラーを作成してラスタレイヤに設定
+        renderer = QgsSingleBandPseudoColorRenderer(
+            raster_layer.dataProvider(), 1, raster_shader
+        )
+        raster_layer.setRenderer(renderer)
+        raster_layer.triggerRepaint()
 
     def generate_colors(self, num_colors):
         # HSV値を定義（開始、25%、50%、75%、100%）
@@ -820,18 +869,38 @@ class Isochrone(QDialog):
         with open(file_path, "w") as file:
             file.write(json.dumps(geojson_data))
 
-        self.load_isochrone_to_qgis(file_path)
+        self.load_vector_to_qgis(file_path)
         return file_path  # 保存されたファイルパスを返す
 
-    def load_isochrone_to_qgis(self, file_path):
+    def load_vector_to_qgis(self, file_path):
         # ファイルパスを使用してレイヤーをロードし、QGISに追加
         vector_layer = QgsVectorLayer(file_path, os.path.basename(file_path), "ogr")
 
         if vector_layer.isValid():
             QgsProject.instance().addMapLayer(vector_layer)
-            self.apply_categorized_symbology(vector_layer, "time")
+            self.apply_vector_symbology(vector_layer, "time")
         else:
             QMessageBox.critical(self, "Layer Error", "Failed to load layer")
+
+    def load_raster_to_qgis(self, file_path):
+        """GeoTIFFファイルを読み込み、QGISに追加してスタイルを適用"""
+        # ファイルパスを使用してラスタレイヤーをロード
+        raster_layer = QgsRasterLayer(file_path, os.path.basename(file_path))
+
+        if raster_layer.isValid():
+            # レイヤのデータソースを設定して範囲を更新
+            raster_layer.dataProvider().setDataSourceUri(
+                raster_layer.dataProvider().dataSourceUri()
+            )
+            raster_layer.triggerRepaint()  # 再描画で範囲を反映
+            # レイヤーをQGISプロジェクトに追加
+            QgsProject.instance().addMapLayer(raster_layer)
+
+            # ラスタにシンボロジを適用
+            self.apply_raster_symbology(raster_layer)
+        else:
+            # 無効な場合はエラーメッセージを表示
+            QMessageBox.critical(self, "Layer Error", "Failed to load raster layer")
 
     def load_settings(self):
         if os.path.exists(self.settings_file):
