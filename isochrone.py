@@ -105,7 +105,25 @@ class Isochrone(QDialog):
 
     # 実行ボタンが押されたときの処理
     def on_run_button_clicked(self):
+        # Isochroneリクエスト
         self.request_isochrone()
+
+        # meshCheckBox がチェックされていない場合、GeoJSON保存のみで終了
+        if not self.ui.meshCheckBox.isChecked():
+            QMessageBox.information(self, "完了", "GeoJSONの保存が完了しました")
+            return
+
+        # メッシュの作成または既存メッシュの使用
+        self.handle_mesh_creation_or_selection()
+
+        # GeoJSONファイルをラスタ化
+        self.rasterize_all_geojson_files()
+
+        # 統計ラスタの生成
+        self.create_statistical_rasters()
+
+        # 完了メッセージ
+        QMessageBox.information(self, "完了", "すべての処理が終了しました")
 
     def close(self):
         # キャンセルボタンが押されたときの処理
@@ -244,25 +262,6 @@ class Isochrone(QDialog):
             # 指定された分の間隔で current_time を進める
             current_time = current_time.addSecs(time_interval_minutes * 60)
 
-        # meshCheckBox がチェックされていない場合は処理終了
-        if not self.ui.meshCheckBox.isChecked():
-            QMessageBox.information(self, "完了", "GeoJSONの保存が完了しました")
-            return
-
-        # meshCheckBox がチェックされている場合の処理
-        if self.ui.makeRaster.checkedButton() == self.ui.makeRasterMesh:
-            # makeRasterMesh が選択されている場合
-            self.calculate_bounding_box()
-        elif self.ui.makeRaster.checkedButton() == self.ui.useExistingMesh:
-            # useExistingMesh が選択されている場合
-            self.use_existing_geometry_as_bounding_box()
-
-        # ラスタ化処理
-        self.rasterize_all_geojson_files()
-
-        # 統計ラスタの生成
-        self.create_statistical_rasters()
-
         # 完了メッセージ
         QMessageBox.information(self, "完了", "すべての処理が終了しました")
 
@@ -283,6 +282,15 @@ class Isochrone(QDialog):
             )
             self.error_occurred = True
         reply.deleteLater()
+
+    def handle_mesh_creation_or_selection(self):
+        """メッシュ作成または既存メッシュを選択する処理"""
+        if self.ui.makeRaster.checkedButton() == self.ui.makeRasterMesh:
+            # makeRasterMesh が選択されている場合
+            self.calculate_bounding_box()
+        elif self.ui.makeRaster.checkedButton() == self.ui.useExistingMesh:
+            # useExistingMesh が選択されている場合
+            self.use_existing_geometry_as_bounding_box()
 
     def handle_response(self, reply, current_date_str, current_time_str):
         error = reply.error()
