@@ -3,7 +3,15 @@ import os
 
 import numpy as np
 from osgeo import gdal, osr
-from PyQt5.QtCore import QDateTime, QEventLoop, Qt, QTime, QUrl
+from PyQt5.QtCore import (
+    QCoreApplication,
+    QDateTime,
+    QEventLoop,
+    Qt,
+    QTime,
+    QTranslator,
+    QUrl,
+)
 from PyQt5.QtGui import QColor
 from PyQt5.QtNetwork import QNetworkReply, QNetworkRequest
 from PyQt5.QtWidgets import QDialog, QMessageBox
@@ -54,6 +62,22 @@ def flatten_coordinates(coords):
 class Isochrone(QDialog):
     def __init__(self):
         super().__init__()
+        self.plugin_dir = os.path.dirname(os.path.realpath(__file__))
+
+        locale_path = os.path.join(self.plugin_dir, "i18n", "isochrone.qm")
+        print(f"Translation file path: {locale_path}")
+        print(f"Translation file exists: {os.path.exists(locale_path)}")
+
+        if os.path.exists(locale_path):
+            self.translator = QTranslator()
+            if self.translator.load(locale_path):
+                QCoreApplication.installTranslator(self.translator)
+                print("Translation loaded successfully.")
+            else:
+                print("Failed to load translation.")
+        else:
+            print("Translation file not found.")
+
         self.ui = uic.loadUi(
             os.path.join(os.path.dirname(__file__), "isochrone.ui"), self
         )
@@ -82,10 +106,8 @@ class Isochrone(QDialog):
         self.pointTool = PointTool(self.canvas)
 
         # メソッドの接続を修正
-        self.pointTool.canvasClicked.connect(self.dialog_handler.update_position)
-        self.ui.setAsStandardPosition.clicked.connect(
-            self.dialog_handler.activate_point_tool
-        )
+        self.pointTool.canvasClicked.connect(self.update_position)
+        self.ui.setAsStandardPosition.clicked.connect(self.activate_point_tool)
         self.ui.buttonBox.accepted.connect(self.on_run_button_clicked)
         self.ui.buttonBox.rejected.connect(self.close)  # キャンセルボタン
 
@@ -105,7 +127,9 @@ class Isochrone(QDialog):
             # メッシュチェックボックスがオフの場合はGeoJSON保存のみ
             if not self.ui.meshCheckBox.isChecked():
                 self.ui.progressBar.setValue(0)
-                QMessageBox.information(self, "完了", "GeoJSONの保存が完了しました")
+                QMessageBox.information(
+                    self, self.tr("Complete"), self.tr("GeoJSON save completed")
+                )
                 return
 
             # メッシュの作成または既存メッシュの使用
@@ -122,13 +146,41 @@ class Isochrone(QDialog):
 
             # 全ての処理が正常に終了した場合にメッセージを表示
             self.ui.progressBar.setValue(0)
-            QMessageBox.information(self, "完了", "すべての処理が終了しました")
+            QMessageBox.information(
+                self, self.tr("Complete"), self.tr("All processing completed")
+            )
 
         except Exception as e:
             QMessageBox.critical(
-                self, "エラー", f"処理中にエラーが発生しました: {str(e)}"
+                self,
+                self.tr("Error"),
+                self.tr(f"Error occurred during processing: {str(e)}"),
             )
             self.ui.progressBar.setValue(0)  # エラー時は進捗バーをリセット
+
+    def activate_point_tool(self):
+        # ダイアログを隠す
+        self.hide()
+        # ポイントツールをアクティブにする
+        self.canvas.setMapTool(self.pointTool)
+
+    # ポイントがクリックされた後の処理を追加
+    def update_position(self, point):
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+        source_crs = self.canvas.mapSettings().destinationCrs()
+        epsg4326 = QgsCoordinateReferenceSystem("EPSG:4326")
+        transform = QgsCoordinateTransform(source_crs, epsg4326, QgsProject.instance())
+        point_transformed = transform.transform(point)
+        coord_text = "{:.6f}, {:.6f}".format(
+            point_transformed.y(), point_transformed.x()
+        )
+        self.ui.standardPosition.setText(coord_text)
+
+        # ポイントツールを非アクティブにする
+        self.canvas.unsetMapTool(self.pointTool)
 
     def close(self):
         # キャンセルボタンが押されたときの処理
@@ -141,7 +193,7 @@ class Isochrone(QDialog):
             QMessageBox.critical(
                 self,
                 "Layer Error",
-                "有効な既存のメッシュレイヤーが選択されていません。",
+                self.tr("No valid existing mesh layer selected."),
             )
             return
 
@@ -197,12 +249,6 @@ class IsochroneDialog(QDialog):
         self.ui.saveAsDefaultCheckBox.stateChanged.connect(self.save_default_settings)
         self.load_settings()
 
-    def activate_point_tool(self):
-        # ダイアログを隠す
-        self.hide()
-        # ポイントツールをアクティブにする
-        self.canvas.setMapTool(self.pointTool)
-
     def toggle_raster_size_controls(self, checked):
         self.ui.rasterSizeLabelMulti.setEnabled(checked)
         self.ui.rasterSize.setEnabled(checked)
@@ -211,30 +257,12 @@ class IsochroneDialog(QDialog):
         self.ui.existingMeshLayer.setEnabled(checked)
         print(f"toggle_raster_size_controls called with checked={checked}")  # デバッグ
 
-    # ポイントがクリックされた後の処理を追加
-    def update_position(self, point):
-        self.show()
-        self.raise_()
-        self.activateWindow()
-
-        source_crs = self.canvas.mapSettings().destinationCrs()
-        epsg4326 = QgsCoordinateReferenceSystem("EPSG:4326")
-        transform = QgsCoordinateTransform(source_crs, epsg4326, QgsProject.instance())
-        point_transformed = transform.transform(point)
-        coord_text = "{:.6f}, {:.6f}".format(
-            point_transformed.y(), point_transformed.x()
-        )
-        self.ui.standardPosition.setText(coord_text)
-
-        # ポイントツールを非アクティブにする
-        self.canvas.unsetMapTool(self.pointTool)
-
     def on_tab_changed(self, index):
         """タブが切り替えられた時の処理"""
         if index == self.ui.tabWidget.indexOf(self.ui.tabSingle):
-            print("TabSingleが選択されました")
+            print(self.tr("TabSingle has been selected."))
         elif index == self.ui.tabWidget.indexOf(self.ui.tabMulti):
-            print("TabMultiが選択されました")
+            print(self.tr("TabMulti has been selected"))
 
     def save_default_settings(self):
         """現在の設定をデフォルトとして保存"""
@@ -254,8 +282,9 @@ class IsochroneDialog(QDialog):
             self.default_settings = {}
 
 
-class IsochroneRequestHandler:
+class IsochroneRequestHandler(QDialog):
     def __init__(self, ui, geojson_files, layer_handler, mesh_handler):
+        super().__init__()
         self.ui = ui
         self.geojson_files = geojson_files
         self.layer_handler = layer_handler
@@ -394,7 +423,7 @@ class IsochroneRequestHandler:
             self.handle_response(reply, current_date_str, current_time_str)
         else:
             QMessageBox.critical(
-                self, "Error", f"Network error occurred: {reply.errorString()}"
+                self, "エラー", f"Network error occurred: {reply.errorString()}"
             )
             self.error_occurred = True
         reply.deleteLater()
@@ -426,20 +455,24 @@ class IsochroneRequestHandler:
                             self.geojson_files.append(file_path)  # ファイルパスを保存
                     except json.JSONDecodeError as e:
                         QMessageBox.critical(
-                            self, "Error", f"JSON decode error: {str(e)}"
+                            self, "エラー", f"JSON decode error: {str(e)}"
                         )
                         self.error_occurred = True
                 else:
-                    QMessageBox.critical(self, "Error", "Empty response received")
+                    QMessageBox.critical(
+                        self, "エラー", self.tr("Empty response received")
+                    )
                     self.error_occurred = True
             else:
                 QMessageBox.critical(
-                    self, "Error", "Unsupported or missing content type"
+                    self, "エラー", self.tr("Unsupported or missing content type")
                 )
                 self.error_occurred = True
         else:
             QMessageBox.critical(
-                self, "Error", f"Network error occurred: {reply.errorString()}"
+                self,
+                "エラー",
+                self.tr(f"Network error occurred: {reply.errorString()}"),
             )
             self.error_occurred = True
 
@@ -469,8 +502,8 @@ class IsochroneRequestHandler:
         if not base_path:
             QMessageBox.critical(
                 self,
-                "Error",
-                "保存先ディレクトリが指定されていません。処理を中断します。",
+                "エラー",
+                self.tr("Output directory is not specified. Process will be aborted."),
             )
             self.error_occurred = True  # エラーフラグを設定
             return None
@@ -479,8 +512,10 @@ class IsochroneRequestHandler:
         if not os.access(base_path, os.W_OK):
             QMessageBox.critical(
                 self,
-                "Error",
-                f"指定されたディレクトリに書き込むことができません: {base_path}。処理を中断します。",
+                "エラー",
+                self.tr(
+                    f"Cannot write to the specified directory: {base_path}. Process will be aborted."
+                ),
             )
             self.error_occurred = True  # エラーフラグを設定
             return None
@@ -492,8 +527,10 @@ class IsochroneRequestHandler:
         except OSError as e:
             QMessageBox.critical(
                 self,
-                "Error",
-                f"ディレクトリの作成に失敗しました: {str(e)}。処理を中断します。",
+                "エラー",
+                self.tr(
+                    f"Failed to create directory: {str(e)}. Process will be aborted."
+                ),
             )
             self.error_occurred = True  # エラーフラグを設定
             return None
@@ -506,8 +543,9 @@ class IsochroneRequestHandler:
         return file_path  # 保存されたファイルパスを返す
 
 
-class MeshHandler:
+class MeshHandler(QDialog):
     def __init__(self, ui, geojson_files, arrive_boolean, layer_handler):
+        super().__init__()
         self.ui = ui
         self.geojson_files = geojson_files
         self.arrive_boolean = arrive_boolean
@@ -656,11 +694,12 @@ class MeshHandler:
             json.dump(grid_geojson, grid_file)
 
         # CRSを明示的に設定するためのフィールドを追加（GeoJSONでは対応できない場合があるため、CRS指定を別途管理）
-        print(f"グリッドが作成されました。ファイルパス: {grid_file_name}")
+        print(self.tr(f"Grid has been created. File path: {grid_file_name}"))
 
 
-class Rasterizer:
+class Rasterizer(QDialog):
     def __init__(self, ui, geojson_files, arrive_boolean, layer_handler):
+        super().__init__()
         self.ui = ui
         self.geojson_files = geojson_files
         self.arrive_boolean = arrive_boolean
@@ -684,7 +723,9 @@ class Rasterizer:
 
         if not mesh_layer or not mesh_layer.isValid():
             QMessageBox.critical(
-                self, "Layer Error", "有効なメッシュレイヤーが選択されていません。"
+                self,
+                "Layer Error",
+                self.tr("No valid mesh layer has been selected."),
             )
             return
 
@@ -738,8 +779,8 @@ class Rasterizer:
             if shp_ds is None:
                 QMessageBox.critical(
                     self,
-                    "Error",
-                    f"GeoJSONファイルの読み込みに失敗しました: {geojson_file}",
+                    "エラー",
+                    self.tr(f"Failed to load GeoJSON file: {geojson_file}"),
                 )
                 continue
 
@@ -758,7 +799,7 @@ class Rasterizer:
             target_ds = None
             shp_ds = None
 
-            print(f"ラスタ化が完了しました: {output_raster_path}")
+            print(self.tr(f"Rasterization completed: {output_raster_path}"))
 
     def save_raster(self, data, stat_type, extent, pixel_size):
         # 範囲情報を展開
@@ -792,7 +833,7 @@ class Rasterizer:
         # 終了処理
         target_ds = None
 
-        print(f"{stat_type}ラスタが作成されました: {stat_file_path}")
+        print(self.tr(f"{stat_type} raster has been created: {stat_file_path}"))
 
         # QGISにラスタを追加し、スタイルを適用
         raster_layer = QgsRasterLayer(stat_file_path, f"{stat_type}_raster")
@@ -823,14 +864,18 @@ class Rasterizer:
 
         # メッシュレイヤーの有効性を確認
         if not mesh_layer or not mesh_layer.isValid():
-            QMessageBox.critical(self, "Layer Error", "メッシュレイヤーが無効です。")
+            QMessageBox.critical(
+                self, "Layer Error", self.tr("The mesh layer is invalid.")
+            )
             return
 
         # メッシュレイヤーにフィーチャがあるか確認
         mesh_features = list(mesh_layer.getFeatures())
         if not mesh_features:
             QMessageBox.critical(
-                self, "Layer Error", "メッシュレイヤーにフィーチャがありません。"
+                self,
+                "Layer Error",
+                self.tr("The mesh layer contains no features."),
             )
             return
 
@@ -901,8 +946,9 @@ class Rasterizer:
         self.save_raster(max_data, "max", extent_values, pixel_size)
 
 
-class QgisLayerHandler:
+class QgisLayerHandler(QDialog):
     def __init__(self, ui, geojson_files):
+        super().__init__()
         self.ui = ui
         self.geojson_files = geojson_files
 
@@ -914,7 +960,7 @@ class QgisLayerHandler:
             QgsProject.instance().addMapLayer(vector_layer)
             self.apply_vector_symbology(vector_layer, "time")
         else:
-            QMessageBox.critical(self, "Layer Error", "Failed to load layer")
+            QMessageBox.critical(self, "Layer Error", self.tr("Failed to load layer"))
 
     def load_raster_to_qgis(self, file_path):
         """GeoTIFFファイルを読み込み、QGISに追加してスタイルを適用"""
@@ -934,7 +980,9 @@ class QgisLayerHandler:
             self.apply_raster_symbology(raster_layer)
         else:
             # 無効な場合はエラーメッセージを表示
-            QMessageBox.critical(self, "Layer Error", "Failed to load raster layer")
+            QMessageBox.critical(
+                self, "Layer Error", self.tr("Failed to load raster layer")
+            )
 
     def apply_vector_symbology(self, vector_layer, field_name):
         # カテゴリ値と色のリストを準備
@@ -957,7 +1005,7 @@ class QgisLayerHandler:
     def apply_raster_symbology(self, raster_layer):
         """ラスタレイヤーにカテゴリ値パレットを基にシンボロジを適用"""
         if not raster_layer.isValid():
-            QMessageBox.critical(self, "Layer Error", "Invalid raster layer.")
+            QMessageBox.critical(self, "Layer Error", self.tr("Invalid raster layer."))
             return
 
         # シェーダーの作成

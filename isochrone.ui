@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <ui version="4.0">
  <class>Dialog</class>
  <widget class="QDialog" name="Dialog">
@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>到達圏作成ツール</string>
+   <string translatable="yes">Isochrone Generation Tool</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_20">
    <item row="0" column="0">
@@ -110,7 +110,7 @@
              </property>
              <widget class="QWidget" name="tabSingle">
               <attribute name="title">
-               <string>単一時間解析</string>
+               <string translatable="yes">Single-Time</string>
               </attribute>
               <layout class="QGridLayout" name="gridLayout_22">
                <item row="0" column="0">
@@ -120,7 +120,7 @@
                    <item row="0" column="0">
                     <widget class="QLabel" name="standardTimeAreaLabelSingle">
                      <property name="text">
-                      <string>計測時刻</string>
+                      <string translatable="yes">Analysis Time</string>
                      </property>
                     </widget>
                    </item>
@@ -169,7 +169,7 @@
              </widget>
              <widget class="QWidget" name="tabMulti">
               <attribute name="title">
-               <string>複数時間解析</string>
+               <string translatable="yes">Multi-Time</string>
               </attribute>
               <layout class="QVBoxLayout" name="verticalLayout">
                <item>
@@ -182,7 +182,7 @@
                    <item row="0" column="0">
                     <widget class="QLabel" name="standardTimeAreaMultiLabel">
                      <property name="text">
-                      <string>開始時刻</string>
+                      <string translatable="yes">Start Time</string>
                      </property>
                      <property name="textFormat">
                       <enum>Qt::AutoText</enum>
@@ -219,7 +219,7 @@
                    <item row="0" column="0">
                     <widget class="QLabel" name="finishTimeLabelMulti">
                      <property name="text">
-                      <string>終了時刻</string>
+                      <string translatable="yes">End Time</string>
                      </property>
                     </widget>
                    </item>
@@ -260,7 +260,7 @@
                    <item row="0" column="0">
                     <widget class="QLabel" name="outputTimeIntervalLabel">
                      <property name="text">
-                      <string>基準時刻間での出力間隔(分)</string>
+                      <string translatable="yes">Output Interval between Base Times (minutes)</string>
                      </property>
                     </widget>
                    </item>
@@ -278,7 +278,7 @@
                       </font>
                      </property>
                      <property name="text">
-                      <string>統計メッシュを作成する</string>
+                      <string translatable="yes">Generate Statistical Mesh</string>
                      </property>
                     </widget>
                    </item>
@@ -288,7 +288,7 @@
                       <bool>false</bool>
                      </property>
                      <property name="text">
-                      <string>ラスタメッシュを作成する</string>
+                      <string translatable="yes">Generate Raster Mesh</string>
                      </property>
                      <property name="checked">
                       <bool>true</bool>
@@ -304,7 +304,7 @@
                       <bool>false</bool>
                      </property>
                      <property name="text">
-                      <string>ラスタメッシュの大きさ(EPSG:4326 WGS84)</string>
+                      <string translatable="yes">Raster Mesh Size (EPSG:4326 WGS84)</string>
                      </property>
                     </widget>
                    </item>
@@ -330,7 +330,7 @@
                       <bool>false</bool>
                      </property>
                      <property name="text">
-                      <string>既存のメッシュを使う</string>
+                      <string translatable="yes">Use Existing Mesh</string>
                      </property>
                      <attribute name="buttonGroup">
                       <string notr="true">makeRaster</string>
@@ -377,7 +377,7 @@
                 </font>
                </property>
                <property name="text">
-                <string>基準の設定</string>
+                <string translatable="yes">Set Base</string>
                </property>
               </widget>
              </item>
@@ -386,7 +386,7 @@
                <item row="1" column="0">
                 <widget class="QRadioButton" name="button_dep">
                  <property name="text">
-                  <string>出発時刻と出発地点を指定</string>
+                  <string translatable="yes">Specify Departure Time and Location</string>
                  </property>
                  <property name="checked">
                   <bool>true</bool>
@@ -399,7 +399,7 @@
                <item row="2" column="0">
                 <widget class="QRadioButton" name="button_ari">
                  <property name="text">
-                  <string>到着時刻と到着地点を指定</string>
+                  <string translatable="yes">Specify Arrival Time and Location</string>
                  </property>
                  <property name="checkable">
                   <bool>true</bool>
@@ -443,7 +443,7 @@
                 </font>
                </property>
                <property name="text">
-                <string>地点の設定</string>
+                <string translatable="yes">Set Location</string>
                </property>
               </widget>
              </item>
@@ -458,7 +458,7 @@
                   </font>
                  </property>
                  <property name="text">
-                  <string>地点を指定</string>
+                  <string translatable="yes">Specify Single Location</string>
                  </property>
                  <property name="checked">
                   <bool>true</bool>
@@ -471,21 +471,21 @@
                <item row="3" column="0" colspan="2">
                 <widget class="QLineEdit" name="standardPosition">
                  <property name="text">
-                  <string>43.064344,141.361915</string>
+                  <string translatable="yes">43.064344,141.361915</string>
                  </property>
                 </widget>
                </item>
                <item row="4" column="0">
                 <widget class="QPushButton" name="setAsStandardPosition">
                  <property name="text">
-                  <string>クリックした場所の位置座標を取得する</string>
+                  <string translatable="yes">Get Coordinates</string>
                  </property>
                 </widget>
                </item>
                <item row="4" column="1">
                 <widget class="QCheckBox" name="saveAsDefaultCheckBox">
                  <property name="text">
-                  <string>この値を次回以降の既定値にする</string>
+                  <string translatable="yes">Set as Default Value for Next Time</string>
                  </property>
                 </widget>
                </item>
@@ -501,7 +501,7 @@
                   </font>
                  </property>
                  <property name="text">
-                  <string>複数地点を指定</string>
+                  <string translatable="yes">Specify Multiple Locations</string>
                  </property>
                  <attribute name="buttonGroup">
                   <string notr="true">radio1</string>
@@ -533,7 +533,7 @@
                 </font>
                </property>
                <property name="text">
-                <string>サーバーURL</string>
+                <string translatable="yes">Server URL</string>
                </property>
               </widget>
              </item>
@@ -542,7 +542,7 @@
                <item row="1" column="0">
                 <widget class="QLineEdit" name="serverUrlAreaText">
                  <property name="text">
-                  <string>http://localhost:8080</string>
+                  <string translatable="yes">http://localhost:8080</string>
                  </property>
                 </widget>
                </item>
@@ -574,7 +574,7 @@
                 </font>
                </property>
                <property name="text">
-                <string>出力先</string>
+                <string translatable="yes">Output Destination</string>
                </property>
               </widget>
              </item>
@@ -618,7 +618,7 @@
                 </font>
                </property>
                <property name="text">
-                <string>到達圏の図形</string>
+                <string translatable="yes">Isochrone Shapes</string>
                </property>
               </widget>
              </item>
@@ -627,7 +627,7 @@
                <item row="1" column="0">
                 <widget class="QLabel" name="outputPolygonIntervalAreaLabel">
                  <property name="text">
-                  <string>それぞれの時刻で出力する図形の時間の間隔(分)</string>
+                  <string translatable="yes">Time Interval for Output Shapes at Each Time (minutes)</string>
                  </property>
                 </widget>
                </item>
@@ -643,7 +643,7 @@
              <item row="13" column="0">
               <widget class="QLabel" name="maxTimeAreaLabel">
                <property name="text">
-                <string>それぞれの時刻で出力する図形の最大時間(分)</string>
+                <string translatable="yes">Maximum Time for Output Shapes at Each Time (minutes)</string>
                </property>
               </widget>
              </item>
@@ -686,22 +686,22 @@
         </size>
        </property>
        <property name="html">
-        <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+        <string translatable="yes">&lt;!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd"&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name="qrichtext" content="1" /&gt;&lt;style type="text/css"&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'.AppleSystemUIFont'; font-size:13pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:24pt; font-weight:600;&quot;&gt;単一時間解析&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;ある時間に特定の地点から出発/到着した場合の到達圏を表示します。&lt;/p&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:24pt; font-weight:600;&quot;&gt;複数時間解析&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;ある時間〜ある時間の間の特定間隔ごとに、特定の地点から出発/到着した場合の到達圏を表示します。&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;データは指定のメッシュ幅またはメッシュファイルを元にラスタ化され、各種統計値が算出されます&lt;/p&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:18pt;&quot;&gt;サーバーURL&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;OpenTripPlannerに接続できるURLを指定してください&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:18pt;&quot;&gt;既存のメッシュ&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;国勢調査の標準地域メッシュなどを想定しています。動作については、(株)MIERUNE提供のJapanese Grid Meshプラグインで作成したメッシュで行っています。グリッドは到達圏のジオメトリ全体を覆うサイズとしてください。(現時点ではClipに非対応)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;
+&lt;/style&gt;&lt;/head&gt;&lt;body style=" font-family:'.AppleSystemUIFont'; font-size:13pt; font-weight:400; font-style:normal;"&gt;
+&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:24pt; font-weight:600;"&gt;Single Time Analysis&lt;/span&gt;&lt;/p&gt;
+&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;Displays isochrones when departing from/arriving at a specific location at a certain time.&lt;/p&gt;
+&lt;p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:24pt; font-weight:600;"&gt;Multi-Time Analysis&lt;/span&gt;&lt;/p&gt;
+&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;Displays isochrones when departing from/arriving at a specific location at regular intervals between certain times.&lt;/p&gt;
+&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;Data is rasterized based on the specified mesh size or mesh file, and various statistics are calculated.&lt;/p&gt;
+&lt;p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:18pt;"&gt;Server URL&lt;/span&gt;&lt;/p&gt;
+&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;Specify the URL to connect to OpenTripPlanner.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;
+&lt;p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:18pt;"&gt;Existing Mesh&lt;/span&gt;&lt;/p&gt;
+&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;Assumes standard regional meshes such as those from the national census. This functionality has been tested with meshes created using the Japanese Grid Mesh plugin provided by MIERUNE Inc. The grid should be large enough to cover the entire isochrone geometry. (Clipping is currently not supported.)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;
 </string>
        </property>
       </widget>
@@ -733,11 +733,11 @@ p, li { white-space: pre-wrap; }
    <header>qgsspinbox.h</header>
   </customwidget>
  </customwidgets>
- <resources/>
- <connections/>
+ <resources />
+ <connections />
  <buttongroups>
-  <buttongroup name="arriveby"/>
-  <buttongroup name="makeRaster"/>
-  <buttongroup name="radio1"/>
+  <buttongroup name="arriveby" />
+  <buttongroup name="makeRaster" />
+  <buttongroup name="radio1" />
  </buttongroups>
 </ui>
