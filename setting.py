@@ -47,9 +47,10 @@ class isochronePlugin:
 
     def initGui(self):
         # メニュー設定
+        icon_path = os.path.join(os.path.dirname(__file__), "imgs", "icon.png")
         self.add_action(
-            icon_path=None,
-            text="isochrone",
+            icon_path=icon_path,
+            text="Make Isochrone",
             callback=self.makeIsochrone,
             parent=self.win,
         )
