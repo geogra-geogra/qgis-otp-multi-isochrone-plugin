@@ -13,7 +13,7 @@ After activating OpenTripPlanner, fill in the specified items on this plug-in an
 OpenTripPlannerを作動させた上で、本プラグイン上で指定項目を埋めて実行すると、自動的に到達圏が表示されます。
 12/9及び12/24に詳しい使い方をQiita記事にて解説します。
 
-![sample_isochrone](imgs/sample_isochrone.png)
+![sample_isochrone](imgs/sample_isochrone.jpg)
 
 ## Remarks 備考
 
