@@ -1,8 +1,8 @@
 [general]
-name=QGIS OTP Multi Isochrone Plugin 
+name=qgis_otp_multi_isochrone_plugin
 qgisMinimumVersion=3.28
 description=Make Isochrone with OpenTripPlanner Ver1.5
-version=1.0
+version=1.0.2
 author=Shota Yamamoto
 email=info@mapmap.tokyo
 homepage=https://mapmap.tokyo

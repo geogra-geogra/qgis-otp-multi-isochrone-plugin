@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QAction
 
 from isochrone import Isochrone
 
-PLUGIN_NAME = "otp-isochrone"
+PLUGIN_NAME = "qgis_otp_multi_isochrone_plugin"
 
 
 class isochronePlugin:
