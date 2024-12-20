@@ -1,4 +1,4 @@
-# qgis-otp-isochrone-plugin
+# QGIS OpenTripPlanner Multi Isochrone Plugin
 
 This Plugin is designed to display Isochrone created by OpenTripPlanner in QGIS.
 The strength of this plugin is that it can continuously calculate and display Isochrone at multiple times and even calculate statistical values.
