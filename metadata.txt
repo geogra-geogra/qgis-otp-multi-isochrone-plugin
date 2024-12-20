@@ -7,8 +7,7 @@ author=Shota Yamamoto
 email=info@mapmap.tokyo
 homepage=https://mapmap.tokyo
 repository=https://github.com/geogra-geogra/qgis-otp-multi-isochrone-plugin
+tracker=https://github.com/geogra-geogra/qgis-otp-multi-isochrone-plugin/issues
 
 #Plugin main icon
 icon=imgs/icon.png
-
-
