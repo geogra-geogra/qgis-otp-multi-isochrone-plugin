@@ -186,17 +186,6 @@ class Isochrone(QDialog):
         # キャンセルボタンが押されたときの処理
         super().close()  # ダイアログを閉じる
 
-    def use_existing_geometry_as_bounding_box(self):
-        existing_layer = self.ui.existingMeshLayer.currentLayer()
-
-        if not existing_layer or not existing_layer.isValid():
-            QMessageBox.critical(
-                self,
-                "Layer Error",
-                self.tr("No valid existing mesh layer selected."),
-            )
-            return
-
 
 class IsochroneDialog(QDialog):
     def __init__(self, ui):
@@ -695,6 +684,17 @@ class MeshHandler(QDialog):
 
         # CRSを明示的に設定するためのフィールドを追加（GeoJSONでは対応できない場合があるため、CRS指定を別途管理）
         print(self.tr(f"Grid has been created. File path: {grid_file_name}"))
+
+    def use_existing_geometry_as_bounding_box(self):
+        existing_layer = self.ui.existingMeshLayer.currentLayer()
+
+        if not existing_layer or not existing_layer.isValid():
+            QMessageBox.critical(
+                self,
+                "Layer Error",
+                self.tr("No valid existing mesh layer selected."),
+            )
+            return
 
 
 class Rasterizer(QDialog):
