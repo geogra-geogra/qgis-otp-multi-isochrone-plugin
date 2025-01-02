@@ -11,9 +11,11 @@ QGISでOpenTripPlannerで作成した到達圏(Isochrone)を表示するため�
 After activating OpenTripPlanner, fill in the specified items on this plug-in and it will automatically display the reachable area.
 
 OpenTripPlannerを作動させた上で、本プラグイン上で指定項目を埋めて実行すると、自動的に到達圏が表示されます。
-12/9及び12/24に詳しい使い方をQiita記事にて解説します。
 
 ![sample_isochrone](imgs/sample_isochrone.jpg)
+
+[プラグインの使い方記事(Qiita/日本語)](https://qiita.com/geogra/items/2e7e0e988bdbc5158414)
+[プラグインを活用した実践記事(Qiita/日本語)](https://qiita.com/geogra/items/dbec185059e2882008df)
 
 ## Remarks 備考
 

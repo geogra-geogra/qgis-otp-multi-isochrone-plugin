@@ -2,8 +2,8 @@
 name=qgis_otp_multi_isochrone_plugin
 qgisMinimumVersion=3.28
 description=Make Isochrone with OpenTripPlanner Ver1.5
-about=Make Isochrone with OpenTripPlanner Ver1.5
-version=1.0.2
+about=This Plugin is designed to display Isochrone created by OpenTripPlanner in QGIS.　The strength of this plugin is that it can continuously calculate and display Isochrone at multiple times and even calculate statistical values.
+version=1.0.3
 author=Shota Yamamoto
 email=info@mapmap.tokyo
 homepage=https://mapmap.tokyo

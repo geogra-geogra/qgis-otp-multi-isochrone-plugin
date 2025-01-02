@@ -186,17 +186,6 @@ class Isochrone(QDialog):
         # キャンセルボタンが押されたときの処理
         super().close()  # ダイアログを閉じる
 
-    def use_existing_geometry_as_bounding_box(self):
-        existing_layer = self.ui.existingMeshLayer.currentLayer()
-
-        if not existing_layer or not existing_layer.isValid():
-            QMessageBox.critical(
-                self,
-                "Layer Error",
-                self.tr("No valid existing mesh layer selected."),
-            )
-            return
-
 
 class IsochroneDialog(QDialog):
     def __init__(self, ui):
@@ -696,6 +685,17 @@ class MeshHandler(QDialog):
         # CRSを明示的に設定するためのフィールドを追加（GeoJSONでは対応できない場合があるため、CRS指定を別途管理）
         print(self.tr(f"Grid has been created. File path: {grid_file_name}"))
 
+    def use_existing_geometry_as_bounding_box(self):
+        existing_layer = self.ui.existingMeshLayer.currentLayer()
+
+        if not existing_layer or not existing_layer.isValid():
+            QMessageBox.critical(
+                self,
+                "Layer Error",
+                self.tr("No valid existing mesh layer selected."),
+            )
+            return
+
 
 class Rasterizer(QDialog):
     def __init__(self, ui, geojson_files, arrive_boolean, layer_handler):
@@ -765,8 +765,12 @@ class Rasterizer(QDialog):
             target_ds = driver.Create(
                 output_raster_path, cols, rows, 1, gdal.GDT_Float32
             )
-            target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
+            x_min_adjusted = x_min + 0.5
+            y_max_adjusted = y_max - 0.5
 
+            target_ds.SetGeoTransform(
+                (x_min_adjusted, pixel_size, 0, y_max_adjusted, 0, -pixel_size)
+            )
             # CRSをEPSG:4326に設定
             target_ds.SetProjection(epsg4326.ExportToWkt())
 
