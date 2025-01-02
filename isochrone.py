@@ -765,8 +765,12 @@ class Rasterizer(QDialog):
             target_ds = driver.Create(
                 output_raster_path, cols, rows, 1, gdal.GDT_Float32
             )
-            target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
+            x_min_adjusted = x_min + 0.5
+            y_max_adjusted = y_max - 0.5
 
+            target_ds.SetGeoTransform(
+                (x_min_adjusted, pixel_size, 0, y_max_adjusted, 0, -pixel_size)
+            )
             # CRSをEPSG:4326に設定
             target_ds.SetProjection(epsg4326.ExportToWkt())
 
