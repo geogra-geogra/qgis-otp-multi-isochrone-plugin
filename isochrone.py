@@ -381,9 +381,7 @@ class IsochroneRequestHandler(QDialog):
 
         # 一つもチェックがない場合は警告を出して処理中断
         if not modes:
-            QMessageBox.warning(
-                self.ui, "警告", "少なくとも1つの移動モードを選択してください。"
-            )
+            QMessageBox.critical(self.ui, "Warning", "Please select more one layer.")
             return  # リクエスト処理を中断
 
         # チェックされたモードをカンマ区切り文字列に変換
@@ -436,7 +434,7 @@ class IsochroneRequestHandler(QDialog):
             self.handle_response(reply, current_date_str, current_time_str)
         else:
             QMessageBox.critical(
-                self, "エラー", f"Network error occurred: {reply.errorString()}"
+                self, "Error", f"Network error occurred: {reply.errorString()}"
             )
             self.error_occurred = True
         reply.deleteLater()
@@ -468,23 +466,23 @@ class IsochroneRequestHandler(QDialog):
                             self.geojson_files.append(file_path)  # ファイルパスを保存
                     except json.JSONDecodeError as e:
                         QMessageBox.critical(
-                            self, "エラー", f"JSON decode error: {str(e)}"
+                            self, "Error", f"JSON decode error: {str(e)}"
                         )
                         self.error_occurred = True
                 else:
                     QMessageBox.critical(
-                        self, "エラー", self.tr("Empty response received")
+                        self, "Error", self.tr("Empty response received")
                     )
                     self.error_occurred = True
             else:
                 QMessageBox.critical(
-                    self, "エラー", self.tr("Unsupported or missing content type")
+                    self, "Error", self.tr("Unsupported or missing content type")
                 )
                 self.error_occurred = True
         else:
             QMessageBox.critical(
                 self,
-                "エラー",
+                "Error",
                 self.tr(f"Network error occurred: {reply.errorString()}"),
             )
             self.error_occurred = True
@@ -515,7 +513,7 @@ class IsochroneRequestHandler(QDialog):
         if not base_path:
             QMessageBox.critical(
                 self,
-                "エラー",
+                "Error",
                 self.tr("Output directory is not specified. Process will be aborted."),
             )
             self.error_occurred = True  # エラーフラグを設定
@@ -525,7 +523,7 @@ class IsochroneRequestHandler(QDialog):
         if not os.access(base_path, os.W_OK):
             QMessageBox.critical(
                 self,
-                "エラー",
+                "Error",
                 self.tr(
                     f"Cannot write to the specified directory: {base_path}. Process will be aborted."
                 ),
@@ -540,7 +538,7 @@ class IsochroneRequestHandler(QDialog):
         except OSError as e:
             QMessageBox.critical(
                 self,
-                "エラー",
+                "Error",
                 self.tr(
                     f"Failed to create directory: {str(e)}. Process will be aborted."
                 ),
@@ -807,7 +805,7 @@ class Rasterizer(QDialog):
             if shp_ds is None:
                 QMessageBox.critical(
                     self,
-                    "エラー",
+                    "Error",
                     self.tr(f"Failed to load GeoJSON file: {geojson_file}"),
                 )
                 continue
