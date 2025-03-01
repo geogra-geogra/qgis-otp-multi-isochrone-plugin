@@ -381,7 +381,9 @@ class IsochroneRequestHandler(QDialog):
 
         # 一つもチェックがない場合は警告を出して処理中断
         if not modes:
-            QMessageBox.critical(self.ui, "Warning", "Please select more one layer.")
+            QMessageBox.critical(
+                self.ui, "Warning", self.tr("Please select more one layer.")
+            )
             return  # リクエスト処理を中断
 
         # チェックされたモードをカンマ区切り文字列に変換
