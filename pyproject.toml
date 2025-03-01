@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "sample"
+name = "qgis-otp-multi-isochrone-plugin"
 version = "0.0.1"
 description = ""
 authors = ["Shota Yamamoto <info@mapmap.tokyo>"]
