@@ -367,6 +367,28 @@ class IsochroneRequestHandler(QDialog):
         current_time = start_time
         self.error_occurred = False  # エラーフラグの初期化
 
+        max_walk_distance = self.ui.maxWalkDistanceSpin.value()
+
+        modes = []
+        if self.ui.checkBoxWalk.isChecked():
+            modes.append("WALK")
+        if self.ui.checkBoxTransit.isChecked():
+            modes.append("TRANSIT")
+        if self.ui.checkBoxCar.isChecked():
+            modes.append("CAR")
+        if self.ui.checkBoxBicycle.isChecked():
+            modes.append("BICYCLE")
+
+        # 一つもチェックがない場合は警告を出して処理中断
+        if not modes:
+            QMessageBox.warning(
+                self.ui, "警告", "少なくとも1つの移動モードを選択してください。"
+            )
+            return  # リクエスト処理を中断
+
+        # チェックされたモードをカンマ区切り文字列に変換
+        mode_query = ",".join(modes)
+
         # リクエストループ
         while current_time <= finish_time and not self.error_occurred:
             current_date_str = current_time.toString("yyyy-MM-dd")
@@ -376,7 +398,9 @@ class IsochroneRequestHandler(QDialog):
             full_url = (
                 f"{server_url}/otp/routers/default/isochrone"
                 f"?fromPlace={lat_dep},{lon_dep}&toPlace={lat_ari},{lon_ari}"
-                f"&date={current_date_str}&time={current_time_str}&mode=WALK,TRANSIT"
+                f"&date={current_date_str}&time={current_time_str}"
+                f"&mode={mode_query}"
+                f"&maxWalkDistance={max_walk_distance}"
                 f"&arriveBy={arrive_boolean_str}&{cutoff_query}"
             )
 
